@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>混凝土預拌機械裝車疊貨自動評估系統 v2.0</title>
+<style>
+:root {
+  --primary:#1a2b4a; --primary-light:#2d4a7a; --primary-lighter:#3d5f9a;
+  --accent:#e8812a; --accent-light:#f4a046;
+  --success:#27ae60; --warning:#f39c12; --danger:#e74c3c;
+  --bg:#f0f3f8; --card:#fff; --border:#dde2eb;
+  --text:#2c3e50; --text-light:#7f8c9b; --text-muted:#aab4be;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* HEADER */
+.header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.3);position:sticky;top:0;z-index:100}
+.header-logo{display:flex;align-items:center;gap:12px}
+.header-logo .icon{width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.header-logo h1{font-size:18px;font-weight:700;letter-spacing:.5px}
+.header-logo p{font-size:11px;opacity:.7;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:12px}
+.version-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
+/* NAV TABS */
+.nav-tabs{background:#fff;border-bottom:2px solid var(--border);padding:0 24px;display:flex;gap:4px;position:sticky;top:64px;z-index:99;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.nav-tab{padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;font-size:14px;font-weight:500;color:var(--text-light);transition:.2s;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.nav-tab:hover{color:var(--primary);background:rgba(26,43,74,.04)}
+.nav-tab.active{color:var(--primary);border-bottom-color:var(--accent);font-weight:700}
+.nav-tab .badge{background:var(--accent);color:#fff;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
+/* LAYOUT */
+.container{max-width:1600px;margin:0 auto;padding:20px 24px}
+.page{display:none}
+.page.active{display:block}
+/* CARDS */
+.card{background:var(--card);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid var(--border);overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:15px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.card-body{padding:20px}
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff} .btn-primary:hover{background:var(--primary-light)}
+.btn-accent{background:var(--accent);color:#fff} .btn-accent:hover{background:var(--accent-light)}
+.btn-success{background:var(--success);color:#fff} .btn-success:hover{background:#2ecc71}
+.btn-danger{background:var(--danger);color:#fff} .btn-danger:hover{background:#c0392b}
+.btn-ghost{background:transparent;color:var(--text-light);border:1px solid var(--border)} .btn-ghost:hover{background:var(--bg)}
+.btn-lg{padding:13px 28px;font-size:15px;border-radius:10px}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+/* TABLES */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--primary);color:#fff;padding:10px 14px;text-align:left;font-weight:600;white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:nth-child(even) td{background:#f8faff}
+tr:hover td{background:#eef2ff}
+/* FORMS */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-control{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);transition:.2s;background:#fff}
+.form-control:focus{outline:none;border-color:var(--primary-lighter);box-shadow:0 0 0 3px rgba(61,95,154,.15)}
+select.form-control{cursor:pointer}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-success{background:#d4efdf;color:#1e8449}
+.badge-warning{background:#fef9e7;color:#b7770d}
+.badge-danger{background:#fdedec;color:#c0392b}
+.badge-info{background:#ebf5fb;color:#1a6fa3}
+.badge-oversize{background:#fdedec;color:#c0392b;border:1px solid #f5b7b1}
+/* PROGRESS */
+.progress-wrap{margin:8px 0}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-light);margin-bottom:4px}
+.progress{height:8px;background:#e8ecf2;border-radius:4px;overflow:hidden}
+.progress-bar{height:100%;border-radius:4px;transition:.4s}
+.progress-weight{background:linear-gradient(90deg,var(--accent),#f07030)}
+.progress-vol{background:linear-gradient(90deg,var(--primary-lighter),var(--primary))}
+.progress-over{background:linear-gradient(90deg,var(--danger),#c0392b)}
+/* SHIPMENT LIST AREA */
+.shipment-layout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start}
+.equip-select-list{max-height:560px;overflow-y:auto;border:1px solid var(--border);border-radius:10px}
+.equip-item{padding:12px 14px;border-bottom:1px solid #f0f3f8;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:12px}
+.equip-item:hover{background:#eef2ff}
+.equip-item .eq-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.equip-item .eq-name{font-weight:600;font-size:13px;color:var(--primary)}
+.equip-item .eq-dim{font-size:11px;color:var(--text-light);margin-top:2px}
+.equip-item .eq-weight{font-size:11px;color:var(--accent);font-weight:600}
+/* QUANTITY INLINE */
+.qty-inline{display:flex;align-items:center;gap:6px;margin-top:6px}
+.qty-btn{width:26px;height:26px;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.qty-minus{background:#fee;color:var(--danger)}
+.qty-plus{background:#e8f6ee;color:var(--success)}
+.qty-input{width:52px;text-align:center;padding:4px;border:1.5px solid var(--border);border-radius:6px;font-size:14px;font-weight:700}
+/* SELECTED LIST */
+.selected-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8faff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)}
+.selected-item .si-name{flex:1;font-weight:600;font-size:13px}
+.selected-item .si-qty{width:80px;text-align:center;font-weight:700;color:var(--primary);font-size:14px}
+.selected-item .si-weight{width:80px;text-align:right;font-size:12px;color:var(--text-light)}
+/* TRUCK RESULT CARDS */
+.truck-card{margin-bottom:24px;border-radius:14px;overflow:hidden;border:2px solid var(--border);box-shadow:0 3px 14px rgba(0,0,0,.08)}
+.truck-card.oversize-truck{border-color:var(--danger)}
+.truck-card-header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:16px}
+.truck-card-header .t-num{width:42px;height:42px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0}
+.truck-card-header .t-info{flex:1}
+.truck-card-header .t-name{font-size:16px;font-weight:700}
+.truck-card-header .t-spec{font-size:12px;opacity:.75;margin-top:3px}
+.truck-card-header .t-alerts{display:flex;gap:6px;flex-wrap:wrap}
+.alert-tag{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.4)}
+.alert-overweight{background:rgba(231,76,60,.7)}
+.alert-overlong{background:rgba(243,156,18,.8)}
+.alert-overwide{background:rgba(155,89,182,.7)}
+.alert-overtall{background:rgba(52,152,219,.7)}
+.truck-card-body{padding:20px}
+/* DIAGRAM AREA */
+.diagram-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.diagram-box{background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:12px}
+.diagram-title{font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px}
+.diagram-box canvas{display:block;width:100%;border-radius:6px}
+/* LEGEND */
+.legend-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-light)}
+.legend-color{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+/* SUMMARY STATS */
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;border-radius:12px;padding:18px;text-align:center}
+.stat-card.accent{background:linear-gradient(135deg,var(--accent) 0%,#d4691a 100%)}
+.stat-card.success{background:linear-gradient(135deg,var(--success) 0%,#1e8449 100%)}
+.stat-card.warning{background:linear-gradient(135deg,var(--warning) 0%,#d68910 100%)}
+.stat-value{font-size:32px;font-weight:900;line-height:1}
+.stat-label{font-size:12px;opacity:.8;margin-top:6px}
+/* OVERSIZE MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:640px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.9) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-header{background:linear-gradient(135deg,var(--danger),#c0392b);color:#fff;padding:18px 24px;display:flex;align-items:center;gap:12px}
+.modal-header h2{font-size:16px;font-weight:700}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.oversize-item{background:#fff8f8;border:1px solid #fcc;border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.oversize-item .oi-name{font-weight:700;color:var(--primary);font-size:13px}
+.oversize-item .oi-issues{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.oversize-dim{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700}
+.oversize-long{background:#fef3cd;color:#856404}
+.oversize-wide{background:#f8d7da;color:#721c24}
+.oversize-tall{background:#cce5ff;color:#004085}
+.oversize-heavy{background:#d4edda;color:#155724}
+/* LOADING */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(26,43,74,.7);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-overlay.show{display:flex}
+.spinner{width:56px;height:56px;border:5px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:16px;font-weight:600}
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:12px}
+.search-wrap input{padding-left:36px}
+.search-wrap .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:15px}
+/* FILTER TABS */
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filter-tab{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--text-light);transition:.15s}
+.filter-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+/* UTILS */
+.mt-16{margin-top:16px} .mb-16{margin-bottom:16px} .mt-8{margin-top:8px}
+.flex{display:flex} .flex-between{display:flex;justify-content:space-between;align-items:center}
+.text-right{text-align:right} .text-center{text-align:center}
+.gap-8{gap:8px} .gap-12{gap:12px}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state .es-icon{font-size:52px;margin-bottom:16px}
+.empty-state p{font-size:15px}
+.tooltip-warn{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;font-size:12px;color:#856404;display:flex;align-items:flex-start;gap:8px}
+/* PRINT */
+@media print{
+  .header,.nav-tabs,.no-print{display:none!important}
+  .truck-card{page-break-inside:avoid;margin-bottom:30px;break-after:page}
+  .diagram-row{grid-template-columns:1fr 1fr}
+  body{background:#fff}
+}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f0f3f8}
+::-webkit-scrollbar-thumb{background:#c0c8d8;border-radius:3px}
+.category-header{padding:8px 14px;background:#f0f3f8;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e4e8f0}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div class="icon">🏗️</div>
+    <div>
+      <h1>混凝土預拌機械裝車疊貨自動評估系統</h1>
+      <p>Concrete Mixer Equipment Auto Loading Assessment System</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-ghost" onclick="loadDemo()" style="color:#fff;border-color:rgba(255,255,255,.3)">📋 載入示範資料</button>
+    <button class="btn btn-ghost" onclick="window.print()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
+    <span class="version-badge">v2.0</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('shipment')" id="tab-shipment">📦 出貨清單建立</div>
+  <div class="nav-tab" onclick="switchTab('result')" id="tab-result">🚛 裝車方案結果 <span class="badge" id="result-badge" style="display:none">0</span></div>
+  <div class="nav-tab" onclick="switchTab('equipment')" id="tab-equipment">🔧 設備資料庫</div>
+  <div class="nav-tab" onclick="switchTab('vehicle')" id="tab-vehicle">🚚 車輛規格管理</div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">🧩 正在計算最佳裝車方案...</div>
+  <div style="color:rgba(255,255,255,.7);font-size:13px">執行 First-Fit Decreasing 裝箱演算法</div>
+</div>
+
+<!-- OVERSIZE MODAL -->
+<div class="modal-overlay" id="oversizeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:22px">⚠️</span>
+      <div>
+        <h2>發現尺寸/重量超限設備</h2>
+        <p style="font-size:12px;opacity:.85;margin-top:2px">以下設備超出所選車輛規格限制，請確認是否允許超限裝載</p>
+      </div>
+    </div>
+    <div class="modal-body" id="oversizeList"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOversizeModal(false)">❌ 取消評估</button>
+      <button class="btn btn-danger" onclick="closeOversizeModal(true)">⚠️ 允許超限，繼續產出方案</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== PAGE: SHIPMENT ============== -->
+<div class="page active" id="page-shipment">
+  <div class="container">
+    <div class="shipment-layout">
+      <!-- LEFT: Equipment Selection -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔧 選擇出貨設備</span>
+          </div>
+          <div class="card-body" style="padding:14px">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input class="form-control" id="equipSearch" placeholder="搜尋設備名稱..." oninput="renderEquipSelect()">
+            </div>
+            <div class="filter-tabs" id="categoryFilters"></div>
+            <div class="equip-select-list" id="equipSelectList"></div>
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT: Shipment List -->
+      <div>
+        <div class="card mb-16">
+          <div class="card-header">
+            <span class="card-title">📋 出貨清單</span>
+            <div class="flex gap-8">
+              <button class="btn btn-ghost btn-sm" onclick="clearShipment()">🗑️ 清空</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:14px">
+            <div id="shipmentList">
+              <div class="empty-state">
+                <div class="es-icon">📦</div>
+                <p>尚未加入任何設備<br><small>點擊左側設備即可加入出貨清單</small></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Summary -->
+        <div class="card mb-16" id="summaryCard" style="display:none">
+          <div class="card-body" style="padding:16px">
+            <div class="grid-3">
+              <div style="text-align:center;padding:10px;background:#f0f5ff;border-radius:10px">
+                <div style="font-size:24px;font-weight:900;color:var(--primary)" id="sumItems">0</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:3px">總件數</div>
+              </div>
+              <div style="text-align:center;padding:10px;background:#fff4ec;border-radius:10px">
+                <div style="font-size:24px;font-weight:900;color:var(--accent)" id="sumWeight">0.0</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:3px">總重量 (t)</div>
+              </div>
+              <div style="text-align:center;padding:10px;background:#f0faf4;border-radius:10px">
+                <div style="font-size:24px;font-weight:900;color:var(--success)" id="sumVolume">0.0</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:3px">總體積 (m³)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- VEHICLE SELECTION -->
+        <div class="card mb-16" id="vehicleSelectCard" style="display:none">
+          <div class="card-header">
+            <span class="card-title">🚛 選擇車輛類型偏好</span>
+          </div>
+          <div class="card-body" style="padding:14px">
+            <div class="form-group">
+              <label class="form-label">車輛選擇模式</label>
+              <select class="form-control" id="vehicleMode">
+                <option value="auto">🤖 自動選擇最佳車型（推薦）</option>
+                <option value="prefer_small">💰 優先使用小型車輛（降低成本）</option>
+                <option value="prefer_large">⚡ 優先使用大型車輛（減少台數）</option>
+                <option value="fixed">🔒 指定單一車型</option>
+              </select>
+            </div>
+            <div id="fixedVehicleWrap" style="display:none">
+              <label class="form-label">指定車型</label>
+              <select class="form-control" id="fixedVehicleSelect"></select>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-accent btn-lg" style="width:100%" id="calcBtn" onclick="startCalculation()" disabled>
+          🚛 自動評估裝車方案
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== PAGE: RESULT ============== -->
+<div class="page" id="page-result">
+  <div class="container">
+    <div id="resultContent">
+      <div class="empty-state">
+        <div class="es-icon">🚛</div>
+        <p>尚未進行裝車評估<br><small>請先建立出貨清單並點擊「自動評估裝車方案」</small></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== PAGE: EQUIPMENT DB ============== -->
+<div class="page" id="page-equipment">
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🔧 設備資料庫管理</span>
+        <div style="font-size:12px;color:var(--text-light)">自動排序：類別 → 代碼 → 名稱</div>
+        <div class="flex gap-8">
+          <input type="file" id="equipImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEquipExcel(event)">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('equipImportInput').click()">📥 匯入 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetEquipDB()">↩️ 重置預設</button>
+          <button class="btn btn-primary btn-sm" onclick="openEquipModal()">➕ 新增設備</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table id="equipTable">
+            <thead><tr>
+              <th>代碼</th><th>名稱</th><th>類別</th>
+              <th>長(mm)</th><th>寬(mm)</th><th>高(mm)</th><th>重量(kg)</th>
+              <th>可疊放</th><th>最大層</th><th>疊高增量(mm)</th><th>中空區域</th><th>操作</th>
+            </tr></thead>
+            <tbody id="equipTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== PAGE: VEHICLE DB ============== -->
+<div class="page" id="page-vehicle">
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🚚 車輛規格管理</span>
+        <div style="font-size:12px;color:var(--text-light)">自動排序：載貨長度 → 最大載重 → 代碼</div>
+        <div class="flex gap-8">
+          <input type="file" id="vehicleImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importVehicleExcel(event)">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('vehicleImportInput').click()">📥 匯入 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetVehicleDB()">↩️ 重置預設</button>
+          <button class="btn btn-primary btn-sm" onclick="openVehicleModal()">➕ 新增車型</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table id="vehicleTable">
+            <thead><tr>
+              <th>代碼</th><th>車型名稱</th>
+              <th>載貨長(mm)</th><th>載貨寬(mm)</th><th>高度限制(mm)</th>
+              <th>最大載重(kg)</th><th>底板高(mm)</th><th>適用說明</th><th>操作</th>
+            </tr></thead>
+            <tbody id="vehicleTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EQUIP MODAL -->
+<div class="modal-overlay" id="equipModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header" style="background:linear-gradient(135deg,var(--primary),var(--primary-light))">
+      <span style="font-size:22px">🔧</span>
+      <h2 id="equipModalTitle">新增設備</h2>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">設備代碼</label><input class="form-control" id="eq_code"></div>
+        <div class="form-group"><label class="form-label">設備名稱</label><input class="form-control" id="eq_name"></div>
+        <div class="form-group"><label class="form-label">類別</label>
+          <select class="form-control" id="eq_cat">
+            <option>攪拌主機</option><option>泵送設備</option><option>水泥筒倉</option>
+            <option>皮帶輸送機</option><option>螺旋輸送機</option><option>料斗系統</option>
+            <option>鋼結構件</option><option>電氣設備</option><option>集料系統</option><option>其他</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">長度 (mm)</label><input class="form-control" id="eq_l" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">寬度 (mm)</label><input class="form-control" id="eq_w" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">高度 (mm)</label><input class="form-control" id="eq_h" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">重量 (kg)</label><input class="form-control" id="eq_wt" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">可疊放</label>
+          <select class="form-control" id="eq_stack" onchange="toggleStackFields()">
+            <option value="0">否</option><option value="1">是</option>
+          </select>
+        </div>
+        <div id="stackFields" style="display:none">
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">最大疊放層數</label><input class="form-control" id="eq_maxlayer" type="number" min="2" max="10" value="2"></div>
+            <div class="form-group"><label class="form-label">疊高增量 (mm)</label><input class="form-control" id="eq_stackdelta" type="number" min="1" value="500"></div>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">中空區域可裝小件</label>
+          <select class="form-control" id="eq_cavity" onchange="toggleCavityFields()">
+            <option value="0">否</option><option value="1">是</option>
+          </select>
+        </div>
+        <div id="cavityFields" style="display:none; grid-column:1 / -1;">
+          <div class="tooltip-warn" style="margin-bottom:12px">💡 設定中空區域後，系統會優先嘗試把較小貨物放入此設備中空空間，不另外占用車板長度。</div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">中空長度 (mm)</label><input class="form-control" id="eq_cavity_l" type="number" min="1" value="0"></div>
+            <div class="form-group"><label class="form-label">中空寬度 (mm)</label><input class="form-control" id="eq_cavity_w" type="number" min="1" value="0"></div>
+            <div class="form-group"><label class="form-label">中空高度 (mm)</label><input class="form-control" id="eq_cavity_h" type="number" min="1" value="0"></div>
+            <div class="form-group"><label class="form-label">中空容許重量 (kg)</label><input class="form-control" id="eq_cavity_wt" type="number" min="1" value="0"></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">備註</label><input class="form-control" id="eq_note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('equipModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEquip()">💾 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- VEHICLE MODAL -->
+<div class="modal-overlay" id="vehicleModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header" style="background:linear-gradient(135deg,var(--primary),var(--primary-light))">
+      <span style="font-size:22px">🚚</span>
+      <h2 id="vehicleModalTitle">新增車型</h2>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">車輛代碼</label><input class="form-control" id="v_code"></div>
+        <div class="form-group"><label class="form-label">車型名稱</label><input class="form-control" id="v_name"></div>
+        <div class="form-group"><label class="form-label">載貨長 (mm)</label><input class="form-control" id="v_l" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">載貨寬 (mm)</label><input class="form-control" id="v_w" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">高度限制 (mm)</label><input class="form-control" id="v_h" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">最大載重 (kg)</label><input class="form-control" id="v_wt" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">底板離地高 (mm)</label><input class="form-control" id="v_floor" type="number" min="1"></div>
+      </div>
+      <div class="form-group"><label class="form-label">適用說明</label><input class="form-control" id="v_note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('vehicleModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">💾 儲存</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+// ===================== DATA =====================
+const DEFAULT_EQUIP = [
+  {code:'HZS25',name:'HZS25攪拌主機',cat:'攪拌主機',l:3200,w:2000,h:2400,wt:5500,stack:false,maxLayer:1,stackDelta:0,note:'25m³/h'},
+  {code:'HZS50',name:'HZS50攪拌主機',cat:'攪拌主機',l:4000,w:2400,h:2800,wt:8500,stack:false,maxLayer:1,stackDelta:0,note:'50m³/h'},
+  {code:'HZS75',name:'HZS75攪拌主機',cat:'攪拌主機',l:4500,w:2600,h:3200,wt:12000,stack:false,maxLayer:1,stackDelta:0,note:'75m³/h'},
+  {code:'HZS100',name:'HZS100攪拌主機',cat:'攪拌主機',l:5200,w:2800,h:3500,wt:15000,stack:false,maxLayer:1,stackDelta:0,note:'100m³/h'},
+  {code:'HZS120',name:'HZS120攪拌主機',cat:'攪拌主機',l:5800,w:3000,h:3800,wt:18000,stack:false,maxLayer:1,stackDelta:0,note:'120m³/h'},
+  {code:'SIL50',name:'50t水泥筒倉',cat:'水泥筒倉',l:6000,w:2200,h:2200,wt:3800,stack:false,maxLayer:1,stackDelta:0,note:'橫置運輸'},
+  {code:'SIL100',name:'100t水泥筒倉',cat:'水泥筒倉',l:8000,w:2400,h:2400,wt:5200,stack:false,maxLayer:1,stackDelta:0,note:'橫置運輸'},
+  {code:'SIL200',name:'200t水泥筒倉',cat:'水泥筒倉',l:10000,w:2600,h:2600,wt:7500,stack:false,maxLayer:1,stackDelta:0,note:'橫置運輸'},
+  {code:'BELT20',name:'皮帶輸送機20m',cat:'皮帶輸送機',l:10000,w:1200,h:1000,wt:2800,stack:true,maxLayer:2,stackDelta:800,note:'骨架組件'},
+  {code:'BELT25',name:'皮帶輸送機25m',cat:'皮帶輸送機',l:12500,w:1200,h:1000,wt:3500,stack:true,maxLayer:2,stackDelta:800,note:'骨架組件'},
+  {code:'SCW8',name:'螺旋輸送機8m',cat:'螺旋輸送機',l:8200,w:500,h:500,wt:850,stack:true,maxLayer:3,stackDelta:400,note:'管道式'},
+  {code:'SCW12',name:'螺旋輸送機12m',cat:'螺旋輸送機',l:12200,w:500,h:500,wt:1200,stack:true,maxLayer:3,stackDelta:400,note:'管道式'},
+  {code:'HOP_A',name:'集料稱量斗',cat:'料斗系統',l:2800,w:2000,h:1800,wt:3200,stack:true,maxLayer:2,stackDelta:1500,note:'料斗組件'},
+  {code:'HOP_P',name:'粉料稱量斗',cat:'料斗系統',l:1800,w:1500,h:1500,wt:1800,stack:true,maxLayer:2,stackDelta:1200,note:'料斗組件'},
+  {code:'HOP_W',name:'水稱量斗',cat:'料斗系統',l:1200,w:1000,h:1000,wt:450,stack:true,maxLayer:3,stackDelta:800,note:'小型料斗'},
+  {code:'STL_F',name:'鋼結構支架(標準節)',cat:'鋼結構件',l:3000,w:1500,h:600,wt:1200,stack:true,maxLayer:4,stackDelta:500,note:'框架件'},
+  {code:'CTRL',name:'控制室(標準)',cat:'電氣設備',l:4000,w:2400,h:2800,wt:3500,stack:false,maxLayer:1,stackDelta:0,note:'操作間'},
+  {code:'ELEC',name:'配電箱櫃',cat:'電氣設備',l:2200,w:800,h:2000,wt:1200,stack:false,maxLayer:1,stackDelta:0,note:'電氣設備'},
+  {code:'AGG4',name:'集料倉(4格)',cat:'集料系統',l:12000,w:3000,h:2000,wt:8000,stack:false,maxLayer:1,stackDelta:0,note:'骨料儲存'},
+  {code:'AGG6',name:'集料倉(6格)',cat:'集料系統',l:16000,w:3000,h:2000,wt:11000,stack:false,maxLayer:1,stackDelta:0,note:'骨料儲存'},
+  {code:'ADD',name:'外加劑系統',cat:'其他',l:2000,w:1200,h:1800,wt:900,stack:false,maxLayer:1,stackDelta:0,note:'液體計量'}
+];
+
+const DEFAULT_VEHICLES = [
+  {code:'V01',name:'6米平板車(小型)',l:6000,w:2300,h:2200,maxWt:8000,floor:800,note:'小型零件、輕型構件'},
+  {code:'V02',name:'9.6米平板半掛車',l:9600,w:2400,h:2500,maxWt:17000,floor:1200,note:'中型設備、一般構件'},
+  {code:'V03',name:'12.5米平板半掛車',l:12500,w:2400,h:2500,maxWt:22000,floor:1200,note:'標準大型設備'},
+  {code:'V04',name:'13米超長平板半掛車',l:13000,w:2500,h:2500,maxWt:25000,floor:1200,note:'超長型設備'},
+  {code:'V05',name:'17.5米超長平板半掛車',l:17500,w:2500,h:2500,maxWt:30000,floor:1200,note:'超長型集料倉、筒倉'},
+  {code:'V06',name:'低床拖板車(標準低床)',l:12000,w:2800,h:3200,maxWt:35000,floor:700,note:'高大型主機設備'},
+  {code:'V07',name:'低床拖板車(加長低床)',l:15000,w:3000,h:3500,maxWt:45000,floor:700,note:'超重型主機、大型集料倉'},
+  {code:'V08',name:'超重型特殊低床車',l:20000,w:3500,h:4000,maxWt:80000,floor:600,note:'特殊超重型設備'},
+  {code:'V09',name:'16米加長平板半掛車',l:16000,w:2500,h:2500,maxWt:28000,floor:1200,note:'集料倉整體、長型骨架'}
+];
+
+let equipDB = [], vehicleDB = [], shipmentItems = [], editEquipIdx = -1, editVehicleIdx = -1;
+let oversizeCallback = null;
+let currentPlan = null;
+
+// ===================== INIT =====================
+function init() {
+  const se = localStorage.getItem('equipDB'), sv = localStorage.getItem('vehicleDB');
+  equipDB = se ? JSON.parse(se) : JSON.parse(JSON.stringify(DEFAULT_EQUIP));
+  vehicleDB = sv ? JSON.parse(sv) : JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
+  sortEquipDB();
+  sortVehicleDB();
+  renderEquipSelect(); renderEquipTable(); renderVehicleTable();
+  renderFixedVehicleSelect();
+  document.getElementById('vehicleMode').addEventListener('change', function(){
+    document.getElementById('fixedVehicleWrap').style.display = this.value==='fixed'?'block':'none';
+  });
+}
+function normalizeSortValue(v){ return (v ?? '').toString().trim(); }
+function naturalCompare(a,b){
+  return normalizeSortValue(a).localeCompare(normalizeSortValue(b), 'zh-Hant-TW', {numeric:true, sensitivity:'base'});
+}
+function sortEquipDB(){
+  equipDB.sort((a,b)=>
+    naturalCompare(a.cat,b.cat) ||
+    naturalCompare(a.code,b.code) ||
+    naturalCompare(a.name,b.name) ||
+    ((a.l||0)-(b.l||0)) ||
+    ((a.w||0)-(b.w||0)) ||
+    ((a.h||0)-(b.h||0))
+  );
+}
+function sortVehicleDB(){
+  vehicleDB.sort((a,b)=>
+    ((a.l||0)-(b.l||0)) ||
+    ((a.maxWt||0)-(b.maxWt||0)) ||
+    naturalCompare(a.code,b.code) ||
+    naturalCompare(a.name,b.name)
+  );
+}
+function saveEquipDB(){
+  sortEquipDB();
+  localStorage.setItem('equipDB',JSON.stringify(equipDB));
+}
+function saveVehicleDB(){
+  sortVehicleDB();
+  localStorage.setItem('vehicleDB',JSON.stringify(vehicleDB));
+}
+
+// ===================== TABS =====================
+function switchTab(t){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+t).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+}
+
+// ===================== EQUIP SELECT RENDER =====================
+const CATEGORY_ICONS = {
+  '攪拌主機':'⚙️','泵送設備':'💧','水泥筒倉':'🏺','皮帶輸送機':'🔄','螺旋輸送機':'🌀',
+  '料斗系統':'🪣','鋼結構件':'🔩','電氣設備':'⚡','集料系統':'🪨','其他':'📦'
+};
+const CATEGORY_COLORS = {
+  '攪拌主機':'#3498db','泵送設備':'#1abc9c','水泥筒倉':'#9b59b6','皮帶輸送機':'#e67e22',
+  '螺旋輸送機':'#e74c3c','料斗系統':'#27ae60','鋼結構件':'#95a5a6','電氣設備':'#f39c12',
+  '集料系統':'#2c3e50','其他':'#7f8c9b'
+};
+let activeCategory = 'all';
+
+function renderEquipSelect(){
+  const q = document.getElementById('equipSearch').value.toLowerCase();
+  // Category filters
+  const cats = ['all',...new Set(equipDB.map(e=>e.cat))];
+  const fDiv = document.getElementById('categoryFilters');
+  fDiv.innerHTML = cats.map(c=>`<div class="filter-tab ${activeCategory===c?'active':''}" onclick="setCategory('${c}')">${c==='all'?'全部':c}</div>`).join('');
+  
+  const list = document.getElementById('equipSelectList');
+  let filtered = equipDB.filter(e=> (activeCategory==='all'||e.cat===activeCategory) && (!q||e.name.toLowerCase().includes(q)||e.code.toLowerCase().includes(q)));
+  
+  if(!filtered.length){list.innerHTML='<div style="text-align:center;padding:30px;color:#aaa">沒有符合的設備</div>';return;}
+  
+  let html='', lastCat='';
+  filtered.forEach((e,i)=>{
+    const realIdx = equipDB.indexOf(e);
+    if(e.cat!==lastCat){html+=`<div class="category-header">${CATEGORY_ICONS[e.cat]||'📦'} ${e.cat}</div>`;lastCat=e.cat;}
+    const color = CATEGORY_COLORS[e.cat]||'#7f8c9b';
+    html+=`<div class="equip-item" onclick="addToShipment(${realIdx})">
+      <div class="eq-icon" style="background:${color}22;color:${color}">${CATEGORY_ICONS[e.cat]||'📦'}</div>
+      <div style="flex:1">
+        <div class="eq-name">${e.name}</div>
+        <div class="eq-dim">📐 ${e.l}×${e.w}×${e.h} mm &nbsp;|&nbsp; <span class="eq-weight">⚖️ ${(e.wt/1000).toFixed(2)}t</span>${e.stack?'&nbsp;|&nbsp;可疊放':''}</div>
+      </div>
+      <span style="font-size:18px;color:#ccc">＋</span>
+    </div>`;
+  });
+  list.innerHTML=html;
+}
+function setCategory(c){activeCategory=c;renderEquipSelect();}
+
+// ===================== SHIPMENT =====================
+function addToShipment(idx){
+  const e = equipDB[idx];
+  const existing = shipmentItems.find(i=>i.code===e.code);
+  if(existing){existing.qty++;} else {shipmentItems.push({...e,qty:1});}
+  renderShipmentList(); updateSummary();
+}
+function removeFromShipment(code){
+  shipmentItems = shipmentItems.filter(i=>i.code!==code);
+  renderShipmentList(); updateSummary();
+}
+function changeQty(code,delta){
+  const item = shipmentItems.find(i=>i.code===code);
+  if(!item) return;
+  item.qty = Math.max(1, item.qty+delta);
+  renderShipmentList(); updateSummary();
+}
+function clearShipment(){shipmentItems=[];renderShipmentList();updateSummary();}
+
+function renderShipmentList(){
+  const div = document.getElementById('shipmentList');
+  if(!shipmentItems.length){
+    div.innerHTML='<div class="empty-state"><div class="es-icon">📦</div><p>尚未加入任何設備</p></div>';
+    document.getElementById('summaryCard').style.display='none';
+    document.getElementById('vehicleSelectCard').style.display='none';
+    document.getElementById('calcBtn').disabled=true;
+    return;
+  }
+  div.innerHTML = shipmentItems.map(item=>{
+    const color = CATEGORY_COLORS[item.cat]||'#7f8c9b';
+    return `<div class="selected-item">
+      <div style="width:30px;height:30px;border-radius:7px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${CATEGORY_ICONS[item.cat]||'📦'}</div>
+      <div class="si-name">
+        <div style="font-weight:700;font-size:13px">${item.name}</div>
+        <div style="font-size:11px;color:var(--text-light)">${item.l}×${item.w}×${item.h} mm</div>
+      </div>
+      <div class="si-qty">
+        <div class="qty-inline">
+          <button class="qty-btn qty-minus" onclick="changeQty('${item.code}',-1)">−</button>
+          <span style="min-width:28px;text-align:center;font-weight:700">${item.qty}</span>
+          <button class="qty-btn qty-plus" onclick="changeQty('${item.code}',1)">＋</button>
+        </div>
+      </div>
+      <div class="si-weight">${((item.wt*item.qty)/1000).toFixed(2)}t</div>
+      <button class="btn btn-danger btn-sm" onclick="removeFromShipment('${item.code}')">✕</button>
+    </div>`;
+  }).join('');
+  document.getElementById('summaryCard').style.display='block';
+  document.getElementById('vehicleSelectCard').style.display='block';
+  document.getElementById('calcBtn').disabled=false;
+}
+
+function updateSummary(){
+  if(!shipmentItems.length) return;
+  const totalItems = shipmentItems.reduce((s,i)=>s+i.qty,0);
+  const totalWt = shipmentItems.reduce((s,i)=>s+i.wt*i.qty,0);
+  const totalVol = shipmentItems.reduce((s,i)=>s+(i.l*i.w*i.h/1e9)*i.qty,0);
+  document.getElementById('sumItems').textContent = totalItems;
+  document.getElementById('sumWeight').textContent = (totalWt/1000).toFixed(2);
+  document.getElementById('sumVolume').textContent = totalVol.toFixed(2);
+}
+
+// ===================== DEMO DATA =====================
+function loadDemo(){
+  shipmentItems=[];
+  const demos=[
+    {code:'HZS75',qty:1},{code:'SIL100',qty:2},{code:'BELT25',qty:1},
+    {code:'SCW12',qty:2},{code:'HOP_A',qty:1},{code:'STL_F',qty:4},
+    {code:'CTRL',qty:1},{code:'ELEC',qty:1},{code:'ADD',qty:1}
+  ];
+  demos.forEach(d=>{const e=equipDB.find(x=>x.code===d.code);if(e)shipmentItems.push({...e,qty:d.qty});});
+  renderShipmentList(); updateSummary();
+  alert('✅ 示範資料已載入！\n共 9 種設備，可點擊「自動評估裝車方案」查看結果。');
+}
+
+// ===================== ALGORITHM =====================
+// Expand shipment items into individual pieces
+function expandItems(){
+  const items=[];
+  shipmentItems.forEach(si=>{
+    for(let i=0;i<si.qty;i++) items.push({...si,instanceId:`${si.code}_${i+1}`,displayName:`${si.name}`+(si.qty>1?` #${i+1}`:'')});
+  });
+  // Sort by volume descending
+  items.sort((a,b)=>(b.l*b.w*b.h)-(a.l*a.w*a.h));
+  return items;
+}
+
+function selectBestVehicle(item, mode){
+  // Find smallest vehicle that can fit the item
+  const sorted = [...vehicleDB].sort((a,b)=>a.maxWt-b.maxWt);
+  if(mode==='prefer_large') sorted.reverse();
+  return sorted.find(v=>item.l<=v.l && item.w<=v.w && item.h<=v.h && item.wt<=v.maxWt) || null;
+}
+
+function checkOversizeForItem(item){
+  // Check against ALL vehicles
+  const issues=[];
+  const bestByL = vehicleDB.some(v=>item.l<=v.l);
+  const bestByW = vehicleDB.some(v=>item.w<=v.w);
+  const bestByH = vehicleDB.some(v=>item.h<=v.h);
+  const bestByWt = vehicleDB.some(v=>item.wt<=v.maxWt);
+  if(!bestByL) issues.push({type:'超長',val:item.l,maxVal:Math.max(...vehicleDB.map(v=>v.l)),exceed:item.l-Math.max(...vehicleDB.map(v=>v.l))});
+  if(!bestByW) issues.push({type:'超寬',val:item.w,maxVal:Math.max(...vehicleDB.map(v=>v.w)),exceed:item.w-Math.max(...vehicleDB.map(v=>v.w))});
+  if(!bestByH) issues.push({type:'超高',val:item.h,maxVal:Math.max(...vehicleDB.map(v=>v.h)),exceed:item.h-Math.max(...vehicleDB.map(v=>v.h))});
+  if(!bestByWt) issues.push({type:'超重',val:item.wt,maxVal:Math.max(...vehicleDB.map(v=>v.maxWt)),exceed:item.wt-Math.max(...vehicleDB.map(v=>v.maxWt))});
+  return issues;
+}
+
+async function startCalculation(){
+  if(!shipmentItems.length){alert('請先加入出貨設備！');return;}
+  const mode = document.getElementById('vehicleMode').value;
+  const fixedCode = document.getElementById('fixedVehicleSelect').value;
+  
+  document.getElementById('loadingOverlay').classList.add('show');
+  await new Promise(r=>setTimeout(r,600));
+  document.getElementById('loadingOverlay').classList.remove('show');
+  
+  // Expand items
+  const allItems = expandItems();
+  
+  // Check for truly unloadable items (exceeds ALL vehicle constraints)
+  const oversizeItems=[];
+  allItems.forEach(item=>{
+    const issues = checkOversizeForItem(item);
+    if(issues.length) oversizeItems.push({item,issues});
+  });
+  
+  if(oversizeItems.length){
+    // Show oversize modal and wait for user decision
+    const allowed = await showOversizeModal(oversizeItems);
+    if(!allowed){return;} // User cancelled
+  }
+  
+  // Run packing algorithm
+  const plan = runFFD(allItems, mode, fixedCode);
+  currentPlan = plan;
+  
+  // Render results
+  renderResults(plan);
+  switchTab('result');
+  document.getElementById('result-badge').style.display='inline';
+  document.getElementById('result-badge').textContent = plan.trucks.length;
+}
+
+function createLoadedPlacement(item, x, vehicle){
+  const placement = {
+    instanceId: item.instanceId,
+    item,
+    x,
+    layer: 1,
+    stackCount: 1,
+    inCavity: false,
+    cavityHostInstanceId: null,
+    cavityHostCode: '',
+    cavityHostName: '',
+    cavityX: 0,
+    overW: item.w>vehicle.w ? item.w-vehicle.w : 0,
+    overH: item.h>vehicle.h ? item.h-vehicle.h : 0,
+    overL: (x+item.l)>vehicle.l ? (x+item.l)-vehicle.l : 0
+  };
+  if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
+    placement.cavity = {
+      l: item.cavityL,
+      w: item.cavityW,
+      h: item.cavityH,
+      maxWt: item.cavityMaxWt,
+      usedLength: 0,
+      usedWeight: 0,
+      items: []
+    };
+  }
+  return placement;
+}
+function tryPlaceInCavity(truck, item){
+  for(const host of truck.loadedItems){
+    if(host.inCavity || !host.cavity) continue;
+    const cavity = host.cavity;
+    const remainLen = cavity.l - cavity.usedLength;
+    const remainWt = cavity.maxWt - cavity.usedWeight;
+    const fits = item.l <= remainLen && item.w <= cavity.w && item.h <= cavity.h && item.wt <= remainWt;
+    if(!fits) continue;
+    const placement = {
+      instanceId: item.instanceId,
+      item,
+      x: host.x + cavity.usedLength,
+      layer: 1,
+      stackCount: 1,
+      inCavity: true,
+      cavityHostInstanceId: host.instanceId,
+      cavityHostCode: host.item.code,
+      cavityHostName: host.item.name,
+      cavityX: cavity.usedLength,
+      overW: 0,
+      overH: 0,
+      overL: 0
+    };
+    if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
+      placement.cavity = { l:item.cavityL, w:item.cavityW, h:item.cavityH, maxWt:item.cavityMaxWt, usedLength:0, usedWeight:0, items:[] };
+    }
+    cavity.items.push(placement.instanceId);
+    cavity.usedLength += item.l + 50;
+    cavity.usedWeight += item.wt;
+    truck.loadedItems.push(placement);
+    truck.usedWeight += item.wt;
+    return true;
+  }
+  return false;
+}
+function runFFD(items, mode, fixedCode){
+  const trucks=[];
+  
+  items.forEach(item=>{
+    let eligibleVehicles = vehicleDB;
+    if(mode==='fixed' && fixedCode) eligibleVehicles = vehicleDB.filter(v=>v.code===fixedCode);
+    let placed = false;
+    
+    for(let t=0; t<trucks.length; t++){
+      const truck = trucks[t];
+      const v = truck.vehicle;
+      const remainWt = v.maxWt - truck.usedWeight;
+      if(item.wt > remainWt*1.1) continue;
+
+      if(tryPlaceInCavity(truck, item)){
+        placed = true;
+        break;
+      }
+      
+      const itemFitsW = item.w<=v.w*1.2;
+      const itemFitsH = item.h<=v.h*1.2;
+      const remainLen = v.l - truck.usedLength;
+      const itemFitsL = item.l<=remainLen*1.1;
+      const itemFitsWt = item.wt<=remainWt*1.1;
+      
+      if(item.stack){
+        const sameTypeLoaded = truck.loadedItems.filter(li=>!li.inCavity && li.item.code===item.code && (li.stackCount||1) < (item.maxLayer||1));
+        if(sameTypeLoaded.length>0 && itemFitsW && itemFitsH && itemFitsWt){
+          const stackTarget = sameTypeLoaded[0];
+          const newCount = (stackTarget.stackCount||1) + 1;
+          const newH = item.h + ((newCount-1) * item.stackDelta);
+          if(newH<=v.h*1.2){
+            stackTarget.stackCount = newCount;
+            truck.usedWeight += item.wt;
+            placed = true;
+            break;
+          }
+        }
+      }
+      
+      if(!placed && itemFitsL && itemFitsW && itemFitsH && itemFitsWt){
+        const x = truck.usedLength;
+        truck.loadedItems.push(createLoadedPlacement(item, x, v));
+        truck.usedLength += item.l + 200;
+        truck.usedWeight += item.wt;
+        placed = true;
+        break;
+      }
+    }
+    
+    if(!placed){
+      let bestVehicle = null;
+      if(mode==='fixed'&&fixedCode){
+        bestVehicle = vehicleDB.find(v=>v.code===fixedCode);
+      } else {
+        const sorted=[...eligibleVehicles].sort((a,b)=> mode==='prefer_large' ? b.maxWt-a.maxWt : a.maxWt-b.maxWt);
+        bestVehicle = sorted.find(v=>item.l<=v.l*1.1&&item.w<=v.w*1.2&&item.h<=v.h*1.2&&item.wt<=v.maxWt*1.1) || sorted[sorted.length-1];
+      }
+      if(!bestVehicle) bestVehicle = vehicleDB[vehicleDB.length-1];
+      const newTruck={ vehicle:bestVehicle, loadedItems:[], usedLength:0, usedWeight:0, truckNum:trucks.length+1 };
+      newTruck.loadedItems.push(createLoadedPlacement(item, 0, bestVehicle));
+      newTruck.usedLength = item.l + 200;
+      newTruck.usedWeight = item.wt;
+      trucks.push(newTruck);
+    }
+  });
+  
+  return {trucks, totalItems:items.length, totalWeight:items.reduce((s,i)=>s+i.wt,0)};
+}
+
+// ===================== OVERSIZE MODAL =====================
+function showOversizeModal(oversizeItems){
+  return new Promise(resolve=>{
+    const list=document.getElementById('oversizeList');
+    const TYPE_CLASS={'超長':'oversize-long','超寬':'oversize-wide','超高':'oversize-tall','超重':'oversize-heavy'};
+    list.innerHTML=oversizeItems.map(oi=>`
+      <div class="oversize-item">
+        <div class="oi-name">⚠️ ${oi.item.displayName||oi.item.name} <span style="font-size:11px;color:var(--text-light)"> ${oi.item.code}</span></div>
+        <div style="font-size:12px;color:var(--text-light);margin:4px 0">設備尺寸：${oi.item.l}×${oi.item.w}×${oi.item.h} mm，重量：${(oi.item.wt/1000).toFixed(2)}t</div>
+        <div class="oi-issues">
+          ${oi.issues.map(issue=>`
+            <span class="oversize-dim ${TYPE_CLASS[issue.type]||''}">
+              ${issue.type}：超出 <b>${issue.exceed.toLocaleString()} mm${issue.type==='超重'?'(kg)':''}</b>
+              （設備${issue.type==='超重'?'重量':'尺寸'}：${issue.val.toLocaleString()}${issue.type==='超重'?'kg':'mm'}，
+              車輛最大：${issue.maxVal.toLocaleString()}${issue.type==='超重'?'kg':'mm'}）
+            </span>`).join('')}
+        </div>
+      </div>`).join('');
+    list.innerHTML+='<div class="tooltip-warn" style="margin-top:12px">⚠️ 超限裝載需依法申請「超重、超長、超寬、超高」特殊運輸許可證，請確認是否符合當地法規。示意圖中將以紅色虛線標示超限尺寸。</div>';
+    oversizeCallback = resolve;
+    document.getElementById('oversizeModal').classList.add('show');
+  });
+}
+function closeOversizeModal(allow){
+  document.getElementById('oversizeModal').classList.remove('show');
+  if(oversizeCallback) oversizeCallback(allow);
+  oversizeCallback=null;
+}
+
+// ===================== RENDER RESULTS =====================
+function renderResults(plan){
+  const div=document.getElementById('resultContent');
+  const totalTrucks=plan.trucks.length;
+  const totalWt=(plan.totalWeight/1000).toFixed(2);
+  
+  // Count oversize
+  const oversizeTrucks = plan.trucks.filter(t=>t.loadedItems.some(li=>li.overW>0||li.overH>0||li.overL>0)).length;
+  
+  // Summary
+  let html=`
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="stat-value">${totalTrucks}</div>
+      <div class="stat-label">🚛 需要車輛總數</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-value">${plan.totalItems}</div>
+      <div class="stat-label">📦 出貨設備總件數</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-value">${totalWt}</div>
+      <div class="stat-label">⚖️ 總貨物重量 (t)</div>
+    </div>
+    <div class="stat-card ${oversizeTrucks>0?'warning':'success'}">
+      <div class="stat-value">${oversizeTrucks}</div>
+      <div class="stat-label">⚠️ 超限車輛台數</div>
+    </div>
+  </div>
+  <div class="flex-between mb-16 no-print">
+    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案，點擊各車卡片查看詳細示意圖</div>
+    <div class="flex gap-8">
+      <button class="btn btn-ghost" onclick="switchTab('shipment')">← 返回修改清單</button>
+      <button class="btn btn-accent" onclick="window.print()">🖨️ 列印報表</button>
+    </div>
+  </div>`;
+  
+  // Each truck card
+  plan.trucks.forEach((truck,tidx)=>{
+    const v = truck.vehicle;
+    const weightRate = Math.min(100,(truck.usedWeight/v.maxWt*100)).toFixed(1);
+    const lenRate = Math.min(100,(truck.usedLength/v.l*100)).toFixed(1);
+    const hasOversize = truck.loadedItems.some(li=>li.overW>0||li.overH>0||li.overL>0);
+    const overWt = truck.usedWeight>v.maxWt;
+    
+    // Build alert tags
+    let alertTags='';
+    if(overWt) alertTags+=`<span class="alert-tag alert-overweight">⚠️ 超重 +${((truck.usedWeight-v.maxWt)/1000).toFixed(2)}t</span>`;
+    truck.loadedItems.forEach(li=>{
+      if(li.overL>0) alertTags+=`<span class="alert-tag alert-overlong">↔️ 超長 +${li.overL}mm</span>`;
+      if(li.overW>0) alertTags+=`<span class="alert-tag alert-overwide">↕️ 超寬 +${li.overW}mm</span>`;
+      if(li.overH>0) alertTags+=`<span class="alert-tag alert-overtall">↑ 超高 +${li.overH}mm</span>`;
+    });
+    
+    html+=`
+    <div class="truck-card ${hasOversize||overWt?'oversize-truck':''}" id="truck_${tidx}">
+      <div class="truck-card-header">
+        <div class="t-num">${tidx+1}</div>
+        <div class="t-info">
+          <div class="t-name">第 ${tidx+1} 台車 — ${v.name}</div>
+          <div class="t-spec">載貨區：${v.l}×${v.w}×${v.h} mm ｜ 最大載重：${(v.maxWt/1000).toFixed(1)}t ｜ 底板高：${v.floor}mm</div>
+        </div>
+        ${alertTags?`<div class="t-alerts">${alertTags}</div>`:''}
+      </div>
+      <div class="truck-card-body">
+        <div class="grid-2">
+          <div>
+            <div class="progress-wrap">
+              <div class="progress-label"><span>⚖️ 重量使用率</span><span style="font-weight:700;color:${parseFloat(weightRate)>100?'var(--danger)':parseFloat(weightRate)>85?'var(--warning)':'var(--success)'}">
+                ${(truck.usedWeight/1000).toFixed(2)}t / ${(v.maxWt/1000).toFixed(1)}t = ${weightRate}%
+              </span></div>
+              <div class="progress"><div class="progress-bar ${parseFloat(weightRate)>100?'progress-over':'progress-weight'}" style="width:${Math.min(100,parseFloat(weightRate))}%"></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="progress-wrap">
+              <div class="progress-label"><span>📏 長度使用率</span><span style="font-weight:700;color:${parseFloat(lenRate)>100?'var(--danger)':parseFloat(lenRate)>85?'var(--warning)':'var(--success)'}">
+                ${(truck.usedLength/1000).toFixed(2)}m / ${(v.l/1000).toFixed(1)}m = ${lenRate}%
+              </span></div>
+              <div class="progress"><div class="progress-bar ${parseFloat(lenRate)>100?'progress-over':'progress-vol'}" style="width:${Math.min(100,parseFloat(lenRate))}%"></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- LOADED ITEMS TABLE -->
+        <div class="table-wrap mt-16">
+          <table>
+            <thead><tr>
+              <th>#</th><th>設備名稱</th><th>長×寬×高 (mm)</th><th>重量</th>
+              <th>裝載位置</th><th>疊放層</th><th>超限狀態</th>
+            </tr></thead>
+            <tbody>
+              ${truck.loadedItems.map((li,i)=>{
+                const issues=[];
+                if(li.overL>0) issues.push(`<span class="badge badge-warning">超長+${li.overL}mm</span>`);
+                if(li.overW>0) issues.push(`<span class="badge badge-danger">超寬+${li.overW}mm</span>`);
+                if(li.overH>0) issues.push(`<span class="badge badge-info">超高+${li.overH}mm</span>`);
+                const stackH = li.item.h + (li.stackCount-1)*li.item.stackDelta;
+                return `<tr>
+                  <td>${i+1}</td>
+                  <td><b>${li.item.displayName||li.item.name}</b><br><small style="color:var(--text-light)">${li.item.code}</small></td>
+                  <td>${li.item.l}×${li.item.w}×${li.item.h}</td>
+                  <td>${(li.item.wt/1000).toFixed(2)}t${li.stackCount>1?`<br><small>×${li.stackCount}件</small>`:''}</td>
+                  <td>${li.inCavity ? `置入 ${li.cavityHostCode} 中空區<br><small style="color:var(--text-light)">中空內位置 ${(li.cavityX/1000).toFixed(2)}m</small>` : `距車頭 ${(li.x/1000).toFixed(2)}m`}</td>
+                  <td>${li.inCavity ? `<span class="badge badge-info">中空區內裝載</span>` : (li.stackCount>1?`${li.stackCount}件疊放`:'單層')}</td>
+                  <td>${li.inCavity?'<span class="badge badge-info">中空配置</span> ':''}${issues.length?issues.join(' '):'<span class="badge badge-success">正常</span>'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <!-- DIAGRAMS (both views) -->
+        <div class="diagram-row">
+          <div class="diagram-box">
+            <div class="diagram-title">🦅 俯視圖（Top View）</div>
+            <canvas id="topCanvas_${tidx}" height="200"></canvas>
+          </div>
+          <div class="diagram-box">
+            <div class="diagram-title">👁️ 側視圖（Side View）</div>
+            <canvas id="sideCanvas_${tidx}" height="200"></canvas>
+          </div>
+        </div>
+        <!-- LEGEND -->
+        <div class="legend-wrap" id="legend_${tidx}" style="margin-top:10px"></div>
+      </div>
+    </div>`;
+  });
+  
+  div.innerHTML=html;
+  
+  // Draw all diagrams
+  setTimeout(()=>{
+    plan.trucks.forEach((truck,tidx)=>{
+      drawTopView(tidx, truck);
+      drawSideView(tidx, truck);
+      buildLegend(tidx, truck);
+    });
+  },100);
+}
+
+// ===================== COLORS =====================
+const ITEM_COLORS=['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e91e63','#00bcd4','#8bc34a','#ff5722','#607d8b','#795548','#673ab7'];
+const colorMap={};
+let colorIdx=0;
+function getColor(code){if(!colorMap[code]){colorMap[code]=ITEM_COLORS[colorIdx%ITEM_COLORS.length];colorIdx++;}return colorMap[code];}
+
+// ===================== TOP VIEW CANVAS =====================
+function drawTopView(tidx, truck){
+  const canvas=document.getElementById(`topCanvas_${tidx}`);
+  if(!canvas) return;
+  const v=truck.vehicle;
+  const W=canvas.parentElement.clientWidth-24||600;
+  canvas.width=W; canvas.height=200;
+  const ctx=canvas.getContext('2d');
+  const PAD=30, ARROW=20;
+  const drawW=W-PAD*2-ARROW;
+  const drawH=canvas.height-PAD*2;
+  const scale=Math.min(drawW/v.l, drawH/v.w);
+  const truckPxL=v.l*scale, truckPxW=v.w*scale;
+  const offX=PAD+ARROW+(drawW-truckPxL)/2;
+  const offY=PAD+(drawH-truckPxW)/2;
+  const topItems = truck.loadedItems.filter(li=>!li.inCavity);
+  const cavityItems = truck.loadedItems.filter(li=>li.inCavity);
+
+  ctx.fillStyle='#1a2b4a';
+  ctx.fillRect(0,0,W,canvas.height);
+  ctx.fillStyle='#e8812a';
+  ctx.font='bold 11px sans-serif';
+  ctx.fillText('▶ 車頭',2,canvas.height/2+4);
+  ctx.strokeStyle='#7eb8f7';
+  ctx.lineWidth=2;
+  ctx.strokeRect(offX,offY,truckPxL,truckPxW);
+  ctx.fillStyle='rgba(125,184,247,0.08)';
+  ctx.fillRect(offX,offY,truckPxL,truckPxW);
+  ctx.fillStyle='#7eb8f7';
+  ctx.font='10px sans-serif';
+  ctx.fillText(`W:${v.w}mm`,offX+truckPxL+4,offY+truckPxW/2+4);
+  ctx.fillText(`L:${v.l}mm`,offX+truckPxL/2-20,offY-6);
+
+  topItems.forEach(li=>{
+    const color=getColor(li.item.code);
+    const ix=offX+li.x*scale;
+    const iw=li.item.l*scale;
+    const itemPxW=li.item.w*scale;
+    const iy=offY+(truckPxW-itemPxW)/2;
+    const drawIW=Math.min(iw,truckPxL-(ix-offX));
+    const drawIH=Math.min(itemPxW,truckPxW);
+    const isOverL=li.item.l>(v.l-li.x);
+    const isOverW=li.item.w>v.w;
+    ctx.fillStyle=color+'cc';
+    ctx.fillRect(ix,iy,drawIW,drawIH);
+    ctx.strokeStyle=color;
+    ctx.lineWidth=1.5;
+    ctx.strokeRect(ix,iy,drawIW,drawIH);
+
+    if(li.cavity){
+      const cavX = ix + Math.max(2, ((li.item.l - li.cavity.l) * scale) / 2);
+      const cavY = iy + Math.max(2, ((li.item.w - li.cavity.w) * scale) / 2);
+      const cavW = Math.max(8, li.cavity.l * scale);
+      const cavH = Math.max(8, li.cavity.w * scale);
+      ctx.save();
+      ctx.setLineDash([5,3]);
+      ctx.strokeStyle='#ffffff';
+      ctx.lineWidth=1.5;
+      ctx.strokeRect(cavX, cavY, cavW, cavH);
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(255,255,255,.8)';
+      ctx.font='bold 9px sans-serif';
+      ctx.fillText('中空區', cavX+4, cavY+11);
+      ctx.restore();
+    }
+
+    if(isOverL){
+      const overPx=(li.item.l-(v.l-li.x))*scale;
+      ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='#e74c3c';ctx.lineWidth=2;
+      ctx.strokeRect(offX+truckPxL,iy,overPx,drawIH);ctx.setLineDash([]);
+      ctx.fillStyle='#e74c3c';ctx.font='bold 9px sans-serif';ctx.fillText(`超長+${li.overL}mm`,offX+truckPxL+2,iy+drawIH/2+4);ctx.restore();
+    }
+    if(isOverW){
+      const overPxW=(li.item.w-v.w)*scale;
+      ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='#9b59b6';ctx.lineWidth=2;
+      ctx.strokeRect(ix,offY+truckPxW,drawIW,overPxW);ctx.setLineDash([]);
+      ctx.fillStyle='#9b59b6';ctx.font='bold 9px sans-serif';ctx.fillText(`超寬+${li.overW}mm`,ix+4,offY+truckPxW+overPxW/2+4);ctx.restore();
+    }
+
+    ctx.fillStyle='#fff';
+    ctx.font=`bold ${Math.max(9,Math.min(12,iw/5))}px sans-serif`;
+    ctx.textAlign='center';
+    const labelX=Math.min(ix+drawIW/2,offX+truckPxL-iw/4);
+    ctx.fillText(li.item.code,labelX,iy+drawIH/2+4);
+    if(li.stackCount>1){ ctx.font='bold 9px sans-serif'; ctx.fillStyle='#ffeb3b'; ctx.fillText(`×${li.stackCount}`,labelX,iy+drawIH/2+14); }
+    ctx.textAlign='left';
+  });
+
+  cavityItems.forEach(li=>{
+    const host = truck.loadedItems.find(h=>h.instanceId===li.cavityHostInstanceId);
+    if(!host || !host.cavity) return;
+    const color=getColor(li.item.code);
+    const hostX=offX+host.x*scale;
+    const hostW=host.item.l*scale;
+    const hostY=offY+(truckPxW-(host.item.w*scale))/2;
+    const hostH=host.item.w*scale;
+    const cavX = hostX + Math.max(2, ((host.item.l - host.cavity.l) * scale) / 2);
+    const cavY = hostY + Math.max(2, ((host.item.w - host.cavity.w) * scale) / 2);
+    const ix = cavX + li.cavityX*scale;
+    const iw = li.item.l*scale;
+    const ih = li.item.w*scale;
+    const iy = cavY + ((host.cavity.w - li.item.w) * scale) / 2;
+    ctx.fillStyle=color;
+    ctx.fillRect(ix,iy,iw,ih);
+    ctx.strokeStyle='#111';
+    ctx.lineWidth=1.2;
+    ctx.strokeRect(ix,iy,iw,ih);
+    ctx.fillStyle='#111';
+    ctx.font='bold 9px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(li.item.code,ix+iw/2,iy+ih/2+3);
+    ctx.textAlign='left';
+  });
+
+  const scaleBarMM=2000, scaleBarPx=scaleBarMM*scale;
+  ctx.strokeStyle='#aaa';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(W-60,canvas.height-10);ctx.lineTo(W-60+scaleBarPx,canvas.height-10);ctx.stroke();
+  ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.fillText(`${scaleBarMM/1000}m`,W-60+scaleBarPx/2-8,canvas.height-13);
+  if(truck.loadedItems.some(li=>li.overW>0||li.overH>0||li.overL>0)){
+    ctx.save();ctx.shadowColor='#e74c3c';ctx.shadowBlur=15;ctx.strokeStyle='#e74c3c66';ctx.lineWidth=3;ctx.strokeRect(1,1,W-2,canvas.height-2);ctx.restore();
+  }
+}
+
+// ===================== SIDE VIEW CANVAS =====================
+function drawSideView(tidx, truck){
+  const canvas=document.getElementById(`sideCanvas_${tidx}`);
+  if(!canvas) return;
+  const v=truck.vehicle;
+  const W=canvas.parentElement.clientWidth-24||600;
+  canvas.width=W; canvas.height=200;
+  const ctx=canvas.getContext('2d');
+  const PAD_L=36, PAD_R=20, PAD_T=20, PAD_B=36;
+  const drawW=W-PAD_L-PAD_R;
+  const drawH=canvas.height-PAD_T-PAD_B;
+  const maxShowH=v.h*1.3;
+  const scale=Math.min(drawW/v.l, drawH/maxShowH);
+  const truckPxL=v.l*scale;
+  const truckPxH=v.h*scale;
+  const baseY=canvas.height-PAD_B;
+  const offX=PAD_L+(drawW-truckPxL)/2;
+  const floorH=v.floor*scale;
+  const limitY=baseY-floorH-truckPxH;
+  const topItems = truck.loadedItems.filter(li=>!li.inCavity);
+  const cavityItems = truck.loadedItems.filter(li=>li.inCavity);
+
+  ctx.fillStyle='#1a2b4a';ctx.fillRect(0,0,W,canvas.height);
+  ctx.strokeStyle='#4a6080';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,baseY+4);ctx.lineTo(W,baseY+4);ctx.stroke();
+  [-0.15,0.15,0.85,0.95].forEach(pos=>{ const wx=offX+truckPxL*pos, wy=baseY+2; ctx.beginPath();ctx.arc(wx,wy,7,0,Math.PI*2);ctx.fillStyle='#555';ctx.fill();ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.stroke(); });
+  ctx.fillStyle='#2a3f5a';ctx.fillRect(offX,baseY-floorH,truckPxL,floorH);ctx.strokeStyle='#5a8ab0';ctx.lineWidth=1;ctx.strokeRect(offX,baseY-floorH,truckPxL,floorH);
+  ctx.save();ctx.setLineDash([6,4]);ctx.strokeStyle='#e74c3c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(offX-10,limitY);ctx.lineTo(offX+truckPxL+10,limitY);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#e74c3c';ctx.font='bold 10px sans-serif';ctx.fillText(`限高 ${v.h}mm`,offX+truckPxL+2,limitY+4);ctx.restore();
+  ctx.fillStyle='#7eb8f7';ctx.font='9px sans-serif';ctx.save();ctx.translate(14,baseY-floorH-truckPxH/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText(`高度限制 ${v.h}mm`,0,0);ctx.restore();ctx.textAlign='left';
+
+  topItems.forEach(li=>{
+    const color=getColor(li.item.code);
+    const ix=offX+li.x*scale;
+    const iw=li.item.l*scale;
+    const stackedH=li.item.h+(li.stackCount-1)*li.item.stackDelta;
+    const iph=stackedH*scale;
+    const iy=baseY-floorH-iph;
+    const drawIW=Math.min(iw,truckPxL-(ix-offX));
+    const isOverH=stackedH>v.h;
+    ctx.fillStyle=color+'cc';ctx.fillRect(ix,iy,drawIW,iph);ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.strokeRect(ix,iy,drawIW,iph);
+    if(li.stackCount>1){
+      for(let s=1;s<li.stackCount;s++){ const lineY=baseY-floorH-(li.item.h+s*li.item.stackDelta)*scale; ctx.save();ctx.setLineDash([3,2]);ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ix,lineY);ctx.lineTo(ix+drawIW,lineY);ctx.stroke();ctx.setLineDash([]);ctx.restore(); }
+    }
+    if(li.cavity){
+      const cavW = Math.max(10, li.cavity.l*scale);
+      const cavH = Math.max(10, li.cavity.h*scale);
+      const cavX = ix + Math.max(2, ((li.item.l - li.cavity.l) * scale) / 2);
+      const cavY = iy + Math.max(2, ((stackedH - li.cavity.h) * scale) / 2);
+      ctx.save();ctx.setLineDash([5,3]);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(cavX,cavY,cavW,cavH);ctx.setLineDash([]);ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='bold 9px sans-serif';ctx.fillText('中空區', cavX+4, cavY+11);ctx.restore();
+    }
+    if(isOverH){ const overPx=(stackedH-v.h)*scale; ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='#3498db';ctx.lineWidth=2;ctx.strokeRect(ix,limitY-overPx,drawIW,overPx);ctx.setLineDash([]);ctx.fillStyle='#3498db';ctx.font='bold 9px sans-serif';ctx.fillText(`超高+${stackedH-v.h}mm`,ix+2,limitY-overPx/2+3);ctx.restore(); }
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ix+drawIW+2,iy);ctx.lineTo(ix+drawIW+2,baseY-floorH);ctx.stroke();ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='9px sans-serif';ctx.fillText(`${stackedH}mm`,ix+drawIW+4,(iy+(baseY-floorH))/2+3);
+    ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(9,Math.min(11,iw/8))}px sans-serif`;ctx.textAlign='center';ctx.fillText(li.item.code,ix+drawIW/2,iy+iph/2+4);if(li.stackCount>1){ctx.font='bold 9px sans-serif';ctx.fillStyle='#ffeb3b';ctx.fillText(`×${li.stackCount}`,ix+drawIW/2,iy+iph/2+15);}ctx.textAlign='left';
+  });
+
+  cavityItems.forEach(li=>{
+    const host = truck.loadedItems.find(h=>h.instanceId===li.cavityHostInstanceId);
+    if(!host || !host.cavity) return;
+    const color=getColor(li.item.code);
+    const hostX=offX+host.x*scale;
+    const hostIW=host.item.l*scale;
+    const hostStackH=host.item.h+(host.stackCount-1)*host.item.stackDelta;
+    const hostIH=hostStackH*scale;
+    const hostY=baseY-floorH-hostIH;
+    const cavX = hostX + Math.max(2, ((host.item.l - host.cavity.l) * scale) / 2);
+    const cavY = hostY + Math.max(2, ((hostStackH - host.cavity.h) * scale) / 2);
+    const ix = cavX + li.cavityX*scale;
+    const iw = li.item.l*scale;
+    const ih = li.item.h*scale;
+    const iy = cavY + ((host.cavity.h - li.item.h) * scale) / 2;
+    ctx.fillStyle=color;ctx.fillRect(ix,iy,iw,ih);ctx.strokeStyle='#111';ctx.lineWidth=1.2;ctx.strokeRect(ix,iy,iw,ih);
+    ctx.fillStyle='#111';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(li.item.code,ix+iw/2,iy+ih/2+3);ctx.textAlign='left';
+  });
+
+  ctx.fillStyle='#7eb8f7';ctx.font='9px sans-serif';ctx.fillText(`← 車長 ${v.l}mm →`,offX+truckPxL/2-30,canvas.height-5);
+  ctx.fillStyle='#5a8ab0';ctx.font='9px sans-serif';ctx.fillText(`底板${v.floor}mm`,offX+4,baseY-floorH/2+3);
+  if(truck.loadedItems.some(li=>li.overH>0||li.overL>0||li.overW>0)){ ctx.save();ctx.shadowColor='#e74c3c';ctx.shadowBlur=15;ctx.strokeStyle='#e74c3c66';ctx.lineWidth=3;ctx.strokeRect(1,1,W-2,canvas.height-2);ctx.restore(); }
+}
+
+// ===================== LEGEND =====================
+function buildLegend(tidx, truck){
+  const div=document.getElementById(`legend_${tidx}`);
+  if(!div) return;
+  const seen=new Set();
+  let html='';
+  truck.loadedItems.forEach(li=>{
+    if(seen.has(li.item.code)) return;
+    seen.add(li.item.code);
+    const color=getColor(li.item.code);
+    html+=`<div class="legend-item"><div class="legend-color" style="background:${color}"></div>${li.item.code}: ${li.item.name}</div>`;
+  });
+  const hasOverL=truck.loadedItems.some(li=>li.overL>0);
+  const hasOverW=truck.loadedItems.some(li=>li.overW>0);
+  const hasOverH=truck.loadedItems.some(li=>li.overH>0);
+  const hasCavity=truck.loadedItems.some(li=>li.cavity);
+  const hasCavityItem=truck.loadedItems.some(li=>li.inCavity);
+  if(hasOverL) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #f39c12;border-radius:2px"></div><span style="color:#e67e22;font-weight:700">超長區域</span></div>`;
+  if(hasOverW) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #9b59b6;border-radius:2px"></div><span style="color:#8e44ad;font-weight:700">超寬區域</span></div>`;
+  if(hasOverH) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #3498db;border-radius:2px"></div><span style="color:#2980b9;font-weight:700">超高區域</span></div>`;
+  if(hasCavity) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #ffffff;border-radius:2px"></div><span style="color:#ffffff;font-weight:700">設備中空區域</span></div>`;
+  if(hasCavityItem) html+=`<div class="legend-item"><div style="width:14px;height:14px;background:#111;border-radius:2px"></div><span style="color:#111;font-weight:700">置入中空貨物</span></div>`;
+  html+=`<div class="legend-item"><div style="width:14px;height:3px;background:#e74c3c;margin:5px 0"></div><span style="color:#e74c3c;font-weight:700">限高線</span></div>`;
+  div.innerHTML=html;
+}
+
+// ===================== EQUIPMENT DB CRUD =====================
+function renderEquipTable(){
+  document.getElementById('equipTbody').innerHTML=equipDB.map((e,i)=>`<tr>
+    <td><code>${e.code}</code></td><td><b>${e.name}</b></td><td>${e.cat}</td>
+    <td>${e.l}</td><td>${e.w}</td><td>${e.h}</td><td>${e.wt.toLocaleString()}</td>
+    <td>${e.stack?'<span class="badge badge-success">是</span>':'<span class="badge">否</span>'}</td>
+    <td>${e.maxLayer}</td><td>${e.stackDelta}</td>
+    <td>${e.cavityEnabled?`<span class="badge badge-info">${e.cavityL||0}×${e.cavityW||0}×${e.cavityH||0}</span><br><small style="color:var(--text-light)">≤ ${(e.cavityMaxWt||0).toLocaleString()}kg</small>`:'<span class="badge">無</span>'}</td>
+    <td><div class="flex gap-8">
+      <button class="btn btn-ghost btn-sm" onclick="openEquipModal(${i})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteEquip(${i})">🗑️</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function openEquipModal(idx=-1){
+  editEquipIdx=idx;
+  document.getElementById('equipModalTitle').textContent=idx<0?'新增設備':'編輯設備';
+  const e=idx>=0?equipDB[idx]:{code:'',name:'',cat:'攪拌主機',l:'',w:'',h:'',wt:'',stack:false,maxLayer:2,stackDelta:500,cavityEnabled:false,cavityL:0,cavityW:0,cavityH:0,cavityMaxWt:0,note:''};
+  ['code','name','l','w','h','wt','note'].forEach(f=>document.getElementById('eq_'+f).value=e[f]||'');
+  document.getElementById('eq_cat').value=e.cat||'攪拌主機';
+  document.getElementById('eq_stack').value=e.stack?'1':'0';
+  document.getElementById('eq_maxlayer').value=e.maxLayer||2;
+  document.getElementById('eq_stackdelta').value=e.stackDelta||500;
+  document.getElementById('eq_cavity').value=e.cavityEnabled?'1':'0';
+  document.getElementById('eq_cavity_l').value=e.cavityL||0;
+  document.getElementById('eq_cavity_w').value=e.cavityW||0;
+  document.getElementById('eq_cavity_h').value=e.cavityH||0;
+  document.getElementById('eq_cavity_wt').value=e.cavityMaxWt||0;
+  toggleStackFields();
+  toggleCavityFields();
+  document.getElementById('equipModal').classList.add('show');
+}
+function toggleStackFields(){
+  document.getElementById('stackFields').style.display=document.getElementById('eq_stack').value==='1'?'block':'none';
+}
+function toggleCavityFields(){
+  document.getElementById('cavityFields').style.display=document.getElementById('eq_cavity').value==='1'?'block':'none';
+}
+function saveEquip(){
+  const e={
+    code:document.getElementById('eq_code').value.trim(),
+    name:document.getElementById('eq_name').value.trim(),
+    cat:document.getElementById('eq_cat').value,
+    l:parseInt(document.getElementById('eq_l').value)||0,
+    w:parseInt(document.getElementById('eq_w').value)||0,
+    h:parseInt(document.getElementById('eq_h').value)||0,
+    wt:parseInt(document.getElementById('eq_wt').value)||0,
+    stack:document.getElementById('eq_stack').value==='1',
+    maxLayer:parseInt(document.getElementById('eq_maxlayer').value)||1,
+    stackDelta:parseInt(document.getElementById('eq_stackdelta').value)||0,
+    cavityEnabled:document.getElementById('eq_cavity').value==='1',
+    cavityL:parseInt(document.getElementById('eq_cavity_l').value)||0,
+    cavityW:parseInt(document.getElementById('eq_cavity_w').value)||0,
+    cavityH:parseInt(document.getElementById('eq_cavity_h').value)||0,
+    cavityMaxWt:parseInt(document.getElementById('eq_cavity_wt').value)||0,
+    note:document.getElementById('eq_note').value.trim()
+  };
+  if(!e.code||!e.name||!e.l||!e.w||!e.h||!e.wt){alert('請填寫完整資料！');return;}
+  if(e.cavityEnabled && (!e.cavityL||!e.cavityW||!e.cavityH||!e.cavityMaxWt)) { alert('若啟用中空區域，請完整填寫中空長/寬/高/容許重量。'); return; }
+  if(editEquipIdx<0) equipDB.push(e); else equipDB[editEquipIdx]=e;
+  saveEquipDB(); renderEquipTable(); renderEquipSelect();
+  closeModal('equipModal');
+}
+function deleteEquip(i){if(confirm(`確定要刪除「${equipDB[i].name}」？`)){equipDB.splice(i,1);saveEquipDB();renderEquipTable();renderEquipSelect();}}
+function resetEquipDB(){if(confirm('確定要重置為預設設備資料？')){equipDB=JSON.parse(JSON.stringify(DEFAULT_EQUIP));saveEquipDB();renderEquipTable();renderEquipSelect();}}
+
+// ===================== VEHICLE DB CRUD =====================
+function renderVehicleTable(){
+  document.getElementById('vehicleTbody').innerHTML=vehicleDB.map((v,i)=>`<tr>
+    <td><code>${v.code}</code></td><td><b>${v.name}</b></td>
+    <td>${v.l}</td><td>${v.w}</td><td>${v.h}</td><td>${(v.maxWt/1000).toFixed(1)}t</td>
+    <td>${v.floor}</td><td style="font-size:12px;color:var(--text-light)">${v.note}</td>
+    <td><div class="flex gap-8">
+      <button class="btn btn-ghost btn-sm" onclick="openVehicleModal(${i})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${i})">🗑️</button>
+    </div></td>
+  </tr>`).join('');
+  renderFixedVehicleSelect();
+}
+function renderFixedVehicleSelect(){
+  document.getElementById('fixedVehicleSelect').innerHTML=vehicleDB.map(v=>`<option value="${v.code}">${v.name} (${(v.maxWt/1000).toFixed(0)}t)</option>`).join('');
+}
+function openVehicleModal(idx=-1){
+  editVehicleIdx=idx;
+  document.getElementById('vehicleModalTitle').textContent=idx<0?'新增車型':'編輯車型';
+  const v=idx>=0?vehicleDB[idx]:{code:'',name:'',l:'',w:'',h:'',maxWt:'',floor:'1200',note:''};
+  ['code','name','l','w','h','floor','note'].forEach(f=>document.getElementById('v_'+f).value=v[f]||'');
+  document.getElementById('v_wt').value=v.maxWt||'';
+  document.getElementById('vehicleModal').classList.add('show');
+}
+function saveVehicle(){
+  const v={
+    code:document.getElementById('v_code').value.trim(),
+    name:document.getElementById('v_name').value.trim(),
+    l:parseInt(document.getElementById('v_l').value)||0,
+    w:parseInt(document.getElementById('v_w').value)||0,
+    h:parseInt(document.getElementById('v_h').value)||0,
+    maxWt:parseInt(document.getElementById('v_wt').value)||0,
+    floor:parseInt(document.getElementById('v_floor').value)||1200,
+    note:document.getElementById('v_note').value.trim()
+  };
+  if(!v.code||!v.name||!v.l||!v.w||!v.h||!v.maxWt){alert('請填寫完整車輛規格！');return;}
+  if(editVehicleIdx<0) vehicleDB.push(v); else vehicleDB[editVehicleIdx]=v;
+  saveVehicleDB(); renderVehicleTable();
+  closeModal('vehicleModal');
+}
+
+function parseNumericValue(v){
+  const n = parseFloat((v ?? '').toString().replace(/,/g,'').trim());
+  return Number.isFinite(n) ? n : 0;
+}
+function parseBooleanValue(v){
+  const s = (v ?? '').toString().trim().toLowerCase();
+  return ['1','true','yes','y','是','可','可用','有'].includes(s);
+}
+function getRowValue(row, aliases){
+  const keys = Object.keys(row || {});
+  for(const alias of aliases){
+    const found = keys.find(k=>k.toString().trim().toLowerCase()===alias.toLowerCase());
+    if(found !== undefined) return row[found];
+  }
+  return '';
+}
+function readExcelRows(file, callback){
+  if(!file){ return; }
+  if(typeof XLSX === 'undefined'){ alert('Excel 解析模組載入失敗，請確認網路連線後重試。'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, {type:'array'});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+    callback(rows || []);
+  };
+  reader.readAsArrayBuffer(file);
+}
+function importEquipExcel(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  readExcelRows(file, rows=>{
+    let inserted = 0, updated = 0, skipped = 0;
+    rows.forEach(row=>{
+      const code = getRowValue(row,['code','設備代碼','代碼']);
+      const name = getRowValue(row,['name','設備名稱','名稱']);
+      if(!code || !name){ skipped++; return; }
+      const equip = {
+        code: code.toString().trim(),
+        name: name.toString().trim(),
+        cat: (getRowValue(row,['cat','類別','category']) || '其他').toString().trim(),
+        l: parseNumericValue(getRowValue(row,['l','長','長度','長(mm)','length'])),
+        w: parseNumericValue(getRowValue(row,['w','寬','寬度','寬(mm)','width'])),
+        h: parseNumericValue(getRowValue(row,['h','高','高度','高(mm)','height'])),
+        wt: parseNumericValue(getRowValue(row,['wt','重量','重量(kg)','weight'])),
+        stack: parseBooleanValue(getRowValue(row,['stack','可疊放','是否可疊放'])),
+        maxLayer: parseNumericValue(getRowValue(row,['maxlayer','最大疊放層數','最大層'])) || 1,
+        stackDelta: parseNumericValue(getRowValue(row,['stackdelta','疊高增量','疊高增量(mm)'])) || 0,
+        cavityEnabled: parseBooleanValue(getRowValue(row,['cavityenabled','中空區域可裝小件','中空可用','cavity'])),
+        cavityL: parseNumericValue(getRowValue(row,['cavityl','中空長度','中空長(mm)'])) || 0,
+        cavityW: parseNumericValue(getRowValue(row,['cavityw','中空寬度','中空寬(mm)'])) || 0,
+        cavityH: parseNumericValue(getRowValue(row,['cavityh','中空高度','中空高(mm)'])) || 0,
+        cavityMaxWt: parseNumericValue(getRowValue(row,['cavitymaxwt','中空容許重量','中空容許重量(kg)'])) || 0,
+        note: (getRowValue(row,['note','備註']) || '').toString().trim()
+      };
+      if(!equip.l || !equip.w || !equip.h || !equip.wt){ skipped++; return; }
+      const idx = equipDB.findIndex(x=>x.code===equip.code);
+      if(idx>=0){ equipDB[idx] = {...equipDB[idx], ...equip}; updated++; }
+      else { equipDB.push(equip); inserted++; }
+    });
+    saveEquipDB(); renderEquipTable(); renderEquipSelect();
+    event.target.value = '';
+    alert(`✅ 設備匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：設備代碼/設備名稱/類別/長度/寬度/高度/重量/可疊放/最大疊放層數/疊高增量/中空區域可裝小件/中空長度/中空寬度/中空高度/中空容許重量/備註`);
+  });
+}
+function importVehicleExcel(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  readExcelRows(file, rows=>{
+    let inserted = 0, updated = 0, skipped = 0;
+    rows.forEach(row=>{
+      const code = getRowValue(row,['code','車輛代碼','代碼']);
+      const name = getRowValue(row,['name','車型名稱','名稱']);
+      if(!code || !name){ skipped++; return; }
+      const vehicle = {
+        code: code.toString().trim(),
+        name: name.toString().trim(),
+        l: parseNumericValue(getRowValue(row,['l','載貨長','長度','載貨長(mm)'])) || 0,
+        w: parseNumericValue(getRowValue(row,['w','載貨寬','寬度','載貨寬(mm)'])) || 0,
+        h: parseNumericValue(getRowValue(row,['h','高度限制','高度','高度限制(mm)'])) || 0,
+        maxWt: parseNumericValue(getRowValue(row,['maxwt','最大載重','最大載重(kg)','載重'])) || 0,
+        floor: parseNumericValue(getRowValue(row,['floor','底板離地高','底板高'])) || 1200,
+        note: (getRowValue(row,['note','適用說明','備註']) || '').toString().trim()
+      };
+      if(!vehicle.l || !vehicle.w || !vehicle.h || !vehicle.maxWt){ skipped++; return; }
+      const idx = vehicleDB.findIndex(x=>x.code===vehicle.code);
+      if(idx>=0){ vehicleDB[idx] = {...vehicleDB[idx], ...vehicle}; updated++; }
+      else { vehicleDB.push(vehicle); inserted++; }
+    });
+    saveVehicleDB(); renderVehicleTable();
+    event.target.value = '';
+    alert(`✅ 車輛匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：車輛代碼/車型名稱/載貨長/載貨寬/高度限制/最大載重/底板離地高/適用說明`);
+  });
+}
+function deleteVehicle(i){if(confirm(`確定要刪除「${vehicleDB[i].name}」？`)){vehicleDB.splice(i,1);saveVehicleDB();renderVehicleTable();}}
+function resetVehicleDB(){if(confirm('確定要重置為預設車輛資料？')){vehicleDB=JSON.parse(JSON.stringify(DEFAULT_VEHICLES));saveVehicleDB();renderVehicleTable();}}
+
+// ===================== UTILS =====================
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');});});
+
+// Handle window resize - redraw canvases
+window.addEventListener('resize',()=>{
+  if(currentPlan){
+    currentPlan.trucks.forEach((truck,tidx)=>{
+      drawTopView(tidx,truck);
+      drawSideView(tidx,truck);
+    });
+  }
+});
+
+init();
+</script>
+</body>
+</html>
