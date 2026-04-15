@@ -300,9 +300,9 @@ select.form-control{cursor:pointer}
             <div class="form-group">
               <label class="form-label">車輛選擇模式</label>
               <select class="form-control" id="vehicleMode">
-                <option value="auto">🤖 自動選擇最佳車型（推薦）</option>
-                <option value="prefer_small">💰 優先使用小型車輛（降低成本）</option>
-                <option value="prefer_large">⚡ 優先使用大型車輛（減少台數）</option>
+                <option value="auto">🤖 自動選擇最佳車型（以總運輸費用優化）</option>
+                <option value="prefer_small">💰 優先使用小型車輛（低單台成本）</option>
+                <option value="prefer_large">⚡ 優先使用大型車輛（減少總台數）</option>
                 <option value="fixed">🔒 指定單一車型</option>
               </select>
             </div>
@@ -342,11 +342,38 @@ select.form-control{cursor:pointer}
         <div class="flex gap-8">
           <input type="file" id="equipImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importEquipExcel(event)">
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('equipImportInput').click()">📥 匯入 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportEquipExcel()">📤 匯出 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportEquipPDF()">📄 匯出 PDF</button>
           <button class="btn btn-ghost btn-sm" onclick="resetEquipDB()">↩️ 重置預設</button>
           <button class="btn btn-primary btn-sm" onclick="openEquipModal()">➕ 新增設備</button>
         </div>
       </div>
-      <div class="card-body" style="padding:0">
+      <div class="card-body" style="padding:16px 16px 0 16px">
+        <div class="grid-3" style="margin-bottom:16px;align-items:end">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">排序欄位</label>
+            <select class="form-control" id="equipSortField" onchange="applyEquipSort()">
+              <option value="cat">類別</option>
+              <option value="code">代碼</option>
+              <option value="name">名稱</option>
+              <option value="l">長度</option>
+              <option value="w">寬度</option>
+              <option value="h">高度</option>
+              <option value="wt">重量</option>
+              <option value="stack">可疊放</option>
+              <option value="maxLayer">最大層數</option>
+              <option value="stackDelta">疊高增量</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">排序方向</label>
+            <select class="form-control" id="equipSortDir" onchange="applyEquipSort()">
+              <option value="asc">升冪</option>
+              <option value="desc">降冪</option>
+            </select>
+          </div>
+          <div class="tooltip-warn" style="margin-bottom:0">🧭 設備資料會依您設定的欄位與方向自動排序，新增/修編/匯入後也會套用。</div>
+        </div>
         <div class="table-wrap">
           <table id="equipTable">
             <thead><tr>
@@ -372,17 +399,42 @@ select.form-control{cursor:pointer}
         <div class="flex gap-8">
           <input type="file" id="vehicleImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importVehicleExcel(event)">
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('vehicleImportInput').click()">📥 匯入 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportVehicleExcel()">📤 匯出 Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportVehiclePDF()">📄 匯出 PDF</button>
           <button class="btn btn-ghost btn-sm" onclick="resetVehicleDB()">↩️ 重置預設</button>
           <button class="btn btn-primary btn-sm" onclick="openVehicleModal()">➕ 新增車型</button>
         </div>
       </div>
-      <div class="card-body" style="padding:0">
+      <div class="card-body" style="padding:16px 16px 0 16px">
+        <div class="grid-3" style="margin-bottom:16px;align-items:end">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">排序欄位</label>
+            <select class="form-control" id="vehicleSortField" onchange="applyVehicleSort()">
+              <option value="l">載貨長</option>
+              <option value="cost">運輸費用</option>
+              <option value="maxWt">最大載重</option>
+              <option value="w">載貨寬</option>
+              <option value="h">高度限制</option>
+              <option value="code">代碼</option>
+              <option value="name">車型名稱</option>
+              <option value="floor">底板高</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">排序方向</label>
+            <select class="form-control" id="vehicleSortDir" onchange="applyVehicleSort()">
+              <option value="asc">升冪</option>
+              <option value="desc">降冪</option>
+            </select>
+          </div>
+          <div class="tooltip-warn" style="margin-bottom:0">💰 車輛排序可直接依運輸費用調整，裝車演算法也會把單台費用納入車型選擇。</div>
+        </div>
         <div class="table-wrap">
           <table id="vehicleTable">
             <thead><tr>
               <th>代碼</th><th>車型名稱</th>
               <th>載貨長(mm)</th><th>載貨寬(mm)</th><th>高度限制(mm)</th>
-              <th>最大載重(kg)</th><th>底板高(mm)</th><th>適用說明</th><th>操作</th>
+              <th>最大載重(kg)</th><th>底板高(mm)</th><th>運輸費用</th><th>適用說明</th><th>操作</th>
             </tr></thead>
             <tbody id="vehicleTbody"></tbody>
           </table>
@@ -465,6 +517,7 @@ select.form-control{cursor:pointer}
         <div class="form-group"><label class="form-label">高度限制 (mm)</label><input class="form-control" id="v_h" type="number" min="1"></div>
         <div class="form-group"><label class="form-label">最大載重 (kg)</label><input class="form-control" id="v_wt" type="number" min="1"></div>
         <div class="form-group"><label class="form-label">底板離地高 (mm)</label><input class="form-control" id="v_floor" type="number" min="1"></div>
+        <div class="form-group"><label class="form-label">單趟運輸費用</label><input class="form-control" id="v_cost" type="number" min="0" step="1"></div>
       </div>
       <div class="form-group"><label class="form-label">適用說明</label><input class="form-control" id="v_note"></div>
     </div>
@@ -476,6 +529,8 @@ select.form-control{cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 // ===================== DATA =====================
 const DEFAULT_EQUIP = [
@@ -503,15 +558,15 @@ const DEFAULT_EQUIP = [
 ];
 
 const DEFAULT_VEHICLES = [
-  {code:'V01',name:'6米平板車(小型)',l:6000,w:2300,h:2200,maxWt:8000,floor:800,note:'小型零件、輕型構件'},
-  {code:'V02',name:'9.6米平板半掛車',l:9600,w:2400,h:2500,maxWt:17000,floor:1200,note:'中型設備、一般構件'},
-  {code:'V03',name:'12.5米平板半掛車',l:12500,w:2400,h:2500,maxWt:22000,floor:1200,note:'標準大型設備'},
-  {code:'V04',name:'13米超長平板半掛車',l:13000,w:2500,h:2500,maxWt:25000,floor:1200,note:'超長型設備'},
-  {code:'V05',name:'17.5米超長平板半掛車',l:17500,w:2500,h:2500,maxWt:30000,floor:1200,note:'超長型集料倉、筒倉'},
-  {code:'V06',name:'低床拖板車(標準低床)',l:12000,w:2800,h:3200,maxWt:35000,floor:700,note:'高大型主機設備'},
-  {code:'V07',name:'低床拖板車(加長低床)',l:15000,w:3000,h:3500,maxWt:45000,floor:700,note:'超重型主機、大型集料倉'},
-  {code:'V08',name:'超重型特殊低床車',l:20000,w:3500,h:4000,maxWt:80000,floor:600,note:'特殊超重型設備'},
-  {code:'V09',name:'16米加長平板半掛車',l:16000,w:2500,h:2500,maxWt:28000,floor:1200,note:'集料倉整體、長型骨架'}
+  {code:'V01',name:'6米平板車(小型)',l:6000,w:2300,h:2200,maxWt:8000,floor:800,cost:18000,note:'小型零件、輕型構件'},
+  {code:'V02',name:'9.6米平板半掛車',l:9600,w:2400,h:2500,maxWt:17000,floor:1200,cost:26000,note:'中型設備、一般構件'},
+  {code:'V03',name:'12.5米平板半掛車',l:12500,w:2400,h:2500,maxWt:22000,floor:1200,cost:32000,note:'標準大型設備'},
+  {code:'V04',name:'13米超長平板半掛車',l:13000,w:2500,h:2500,maxWt:25000,floor:1200,cost:35000,note:'超長型設備'},
+  {code:'V05',name:'17.5米超長平板半掛車',l:17500,w:2500,h:2500,maxWt:30000,floor:1200,cost:43000,note:'超長型集料倉、筒倉'},
+  {code:'V06',name:'低床拖板車(標準低床)',l:12000,w:2800,h:3200,maxWt:35000,floor:700,cost:45000,note:'高大型主機設備'},
+  {code:'V07',name:'低床拖板車(加長低床)',l:15000,w:3000,h:3500,maxWt:45000,floor:700,cost:56000,note:'超重型主機、大型集料倉'},
+  {code:'V08',name:'超重型特殊低床車',l:20000,w:3500,h:4000,maxWt:80000,floor:600,cost:90000,note:'特殊超重型設備'},
+  {code:'V09',name:'16米加長平板半掛車',l:16000,w:2500,h:2500,maxWt:28000,floor:1200,cost:40000,note:'集料倉整體、長型骨架'}
 ];
 
 let equipDB = [], vehicleDB = [], shipmentItems = [], editEquipIdx = -1, editVehicleIdx = -1;
@@ -519,10 +574,14 @@ let oversizeCallback = null;
 let currentPlan = null;
 
 // ===================== INIT =====================
+const DEFAULT_EQUIP_SORT = { field:'cat', dir:'asc' };
+const DEFAULT_VEHICLE_SORT = { field:'l', dir:'asc' };
+
 function init() {
   const se = localStorage.getItem('equipDB'), sv = localStorage.getItem('vehicleDB');
   equipDB = se ? JSON.parse(se) : JSON.parse(JSON.stringify(DEFAULT_EQUIP));
   vehicleDB = sv ? JSON.parse(sv) : JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
+  applySortControlsFromStorage();
   sortEquipDB();
   sortVehicleDB();
   renderEquipSelect(); renderEquipTable(); renderVehicleTable();
@@ -535,23 +594,64 @@ function normalizeSortValue(v){ return (v ?? '').toString().trim(); }
 function naturalCompare(a,b){
   return normalizeSortValue(a).localeCompare(normalizeSortValue(b), 'zh-Hant-TW', {numeric:true, sensitivity:'base'});
 }
+function getSortConfig(key, defaults){
+  try{
+    const raw = JSON.parse(localStorage.getItem(key) || 'null');
+    return { field: raw?.field || defaults.field, dir: raw?.dir || defaults.dir };
+  }catch(e){
+    return {...defaults};
+  }
+}
+function saveSortConfig(key, config){
+  localStorage.setItem(key, JSON.stringify(config));
+}
+function applySortControlsFromStorage(){
+  const es = getSortConfig('equipSortConfig', DEFAULT_EQUIP_SORT);
+  const vs = getSortConfig('vehicleSortConfig', DEFAULT_VEHICLE_SORT);
+  const esf = document.getElementById('equipSortField');
+  const esd = document.getElementById('equipSortDir');
+  const vsf = document.getElementById('vehicleSortField');
+  const vsd = document.getElementById('vehicleSortDir');
+  if(esf) esf.value = es.field;
+  if(esd) esd.value = es.dir;
+  if(vsf) vsf.value = vs.field;
+  if(vsd) vsd.value = vs.dir;
+}
+function compareByField(a,b,field){
+  const av = a?.[field];
+  const bv = b?.[field];
+  if(typeof av === 'number' || typeof bv === 'number') return (Number(av)||0) - (Number(bv)||0);
+  if(typeof av === 'boolean' || typeof bv === 'boolean') return Number(Boolean(av)) - Number(Boolean(bv));
+  return naturalCompare(av,bv);
+}
 function sortEquipDB(){
-  equipDB.sort((a,b)=>
-    naturalCompare(a.cat,b.cat) ||
-    naturalCompare(a.code,b.code) ||
-    naturalCompare(a.name,b.name) ||
-    ((a.l||0)-(b.l||0)) ||
-    ((a.w||0)-(b.w||0)) ||
-    ((a.h||0)-(b.h||0))
-  );
+  const config = getSortConfig('equipSortConfig', DEFAULT_EQUIP_SORT);
+  equipDB.sort((a,b)=>{
+    let result = compareByField(a,b,config.field);
+    if(config.dir === 'desc') result *= -1;
+    return result || naturalCompare(a.cat,b.cat) || naturalCompare(a.code,b.code) || naturalCompare(a.name,b.name);
+  });
 }
 function sortVehicleDB(){
-  vehicleDB.sort((a,b)=>
-    ((a.l||0)-(b.l||0)) ||
-    ((a.maxWt||0)-(b.maxWt||0)) ||
-    naturalCompare(a.code,b.code) ||
-    naturalCompare(a.name,b.name)
-  );
+  const config = getSortConfig('vehicleSortConfig', DEFAULT_VEHICLE_SORT);
+  vehicleDB.sort((a,b)=>{
+    let result = compareByField(a,b,config.field);
+    if(config.dir === 'desc') result *= -1;
+    return result || ((a.cost||0)-(b.cost||0)) || naturalCompare(a.code,b.code) || naturalCompare(a.name,b.name);
+  });
+}
+function applyEquipSort(){
+  const config = { field: document.getElementById('equipSortField').value, dir: document.getElementById('equipSortDir').value };
+  saveSortConfig('equipSortConfig', config);
+  sortEquipDB();
+  renderEquipTable();
+  renderEquipSelect();
+}
+function applyVehicleSort(){
+  const config = { field: document.getElementById('vehicleSortField').value, dir: document.getElementById('vehicleSortDir').value };
+  saveSortConfig('vehicleSortConfig', config);
+  sortVehicleDB();
+  renderVehicleTable();
 }
 function saveEquipDB(){
   sortEquipDB();
@@ -687,6 +787,73 @@ function loadDemo(){
   alert('✅ 示範資料已載入！\n共 9 種設備，可點擊「自動評估裝車方案」查看結果。');
 }
 
+function checkOversizeForItem(item){
+  const issues=[];
+  const maxLen = Math.max(...vehicleDB.map(v=>v.l||0));
+  const maxWid = Math.max(...vehicleDB.map(v=>v.w||0));
+  const maxHei = Math.max(...vehicleDB.map(v=>v.h||0));
+  const maxWt = Math.max(...vehicleDB.map(v=>v.maxWt||0));
+  const fitsAny = vehicleDB.some(v=> getItemOrientations(item).some(o=>o.l<=v.l && o.w<=v.w) && item.h<=v.h && item.wt<=v.maxWt );
+  if(fitsAny) return issues;
+  if(item.l > maxLen && item.w > maxLen){
+    const bestLen = Math.max(item.l, item.w);
+    issues.push({type:'超長', val:bestLen, maxVal:maxLen, exceed:bestLen-maxLen});
+  } else if(Math.min(item.l, item.w) > maxWid){
+    issues.push({type:'超寬', val:Math.min(item.l,item.w), maxVal:maxWid, exceed:Math.min(item.l,item.w)-maxWid});
+  } else {
+    const bestOrient = getItemOrientations(item).sort((a,b)=>(Math.max(0,a.l-maxLen)+Math.max(0,a.w-maxWid))-(Math.max(0,b.l-maxLen)+Math.max(0,b.w-maxWid)))[0];
+    if(bestOrient.l > maxLen) issues.push({type:'超長', val:bestOrient.l, maxVal:maxLen, exceed:bestOrient.l-maxLen});
+    if(bestOrient.w > maxWid) issues.push({type:'超寬', val:bestOrient.w, maxVal:maxWid, exceed:bestOrient.w-maxWid});
+  }
+  if(item.h > maxHei) issues.push({type:'超高', val:item.h, maxVal:maxHei, exceed:item.h-maxHei});
+  if(item.wt > maxWt) issues.push({type:'超重', val:item.wt, maxVal:maxWt, exceed:item.wt-maxWt});
+  return issues;
+}
+
+async function startCalculation(){
+  if(!shipmentItems.length){ alert('請先加入出貨設備！'); return; }
+  const mode = document.getElementById('vehicleMode').value;
+  const fixedCode = document.getElementById('fixedVehicleSelect').value;
+
+  const loading = document.getElementById('loadingOverlay');
+  if(loading) loading.classList.add('show');
+  await new Promise(r=>setTimeout(r, 300));
+
+  try{
+    const allItems = expandItems();
+    if(!allItems.length){
+      throw new Error('沒有可計算的設備資料');
+    }
+
+    const oversizeItems=[];
+    allItems.forEach(item=>{
+      const issues = checkOversizeForItem(item);
+      if(issues.length) oversizeItems.push({item, issues});
+    });
+
+    let allowOversize = false;
+    if(oversizeItems.length){
+      allowOversize = await showOversizeModal(oversizeItems);
+      if(!allowOversize){
+        if(loading) loading.classList.remove('show');
+        return;
+      }
+    }
+
+    const plan = runFFD(allItems, mode, fixedCode, allowOversize);
+    currentPlan = plan;
+    renderResults(plan);
+    switchTab('result');
+    document.getElementById('result-badge').style.display='inline';
+    document.getElementById('result-badge').textContent = plan.trucks.length;
+  }catch(err){
+    console.error('裝車評估失敗', err);
+    alert('裝車評估失敗：' + (err?.message || err));
+  }finally{
+    if(loading) loading.classList.remove('show');
+  }
+}
+
 // ===================== ALGORITHM =====================
 // Expand shipment items into individual pieces
 function expandItems(){
@@ -694,73 +861,28 @@ function expandItems(){
   shipmentItems.forEach(si=>{
     for(let i=0;i<si.qty;i++) items.push({...si,instanceId:`${si.code}_${i+1}`,displayName:`${si.name}`+(si.qty>1?` #${i+1}`:'')});
   });
-  // Sort by volume descending
-  items.sort((a,b)=>(b.l*b.w*b.h)-(a.l*a.w*a.h));
+  // 先處理大平面占用物，再處理較小件，提升車板平面利用率
+  items.sort((a,b)=>{
+    const areaDiff = (b.l*b.w) - (a.l*a.w);
+    if(areaDiff) return areaDiff;
+    const volDiff = (b.l*b.w*b.h) - (a.l*a.w*a.h);
+    if(volDiff) return volDiff;
+    return b.wt - a.wt;
+  });
   return items;
 }
 
-function selectBestVehicle(item, mode){
-  // Find smallest vehicle that can fit the item
-  const sorted = [...vehicleDB].sort((a,b)=>a.maxWt-b.maxWt);
-  if(mode==='prefer_large') sorted.reverse();
-  return sorted.find(v=>item.l<=v.l && item.w<=v.w && item.h<=v.h && item.wt<=v.maxWt) || null;
-}
-
-function checkOversizeForItem(item){
-  // Check against ALL vehicles
-  const issues=[];
-  const bestByL = vehicleDB.some(v=>item.l<=v.l);
-  const bestByW = vehicleDB.some(v=>item.w<=v.w);
-  const bestByH = vehicleDB.some(v=>item.h<=v.h);
-  const bestByWt = vehicleDB.some(v=>item.wt<=v.maxWt);
-  if(!bestByL) issues.push({type:'超長',val:item.l,maxVal:Math.max(...vehicleDB.map(v=>v.l)),exceed:item.l-Math.max(...vehicleDB.map(v=>v.l))});
-  if(!bestByW) issues.push({type:'超寬',val:item.w,maxVal:Math.max(...vehicleDB.map(v=>v.w)),exceed:item.w-Math.max(...vehicleDB.map(v=>v.w))});
-  if(!bestByH) issues.push({type:'超高',val:item.h,maxVal:Math.max(...vehicleDB.map(v=>v.h)),exceed:item.h-Math.max(...vehicleDB.map(v=>v.h))});
-  if(!bestByWt) issues.push({type:'超重',val:item.wt,maxVal:Math.max(...vehicleDB.map(v=>v.maxWt)),exceed:item.wt-Math.max(...vehicleDB.map(v=>v.maxWt))});
-  return issues;
-}
-
-async function startCalculation(){
-  if(!shipmentItems.length){alert('請先加入出貨設備！');return;}
-  const mode = document.getElementById('vehicleMode').value;
-  const fixedCode = document.getElementById('fixedVehicleSelect').value;
-  
-  document.getElementById('loadingOverlay').classList.add('show');
-  await new Promise(r=>setTimeout(r,600));
-  document.getElementById('loadingOverlay').classList.remove('show');
-  
-  // Expand items
-  const allItems = expandItems();
-  
-  // Check for truly unloadable items (exceeds ALL vehicle constraints)
-  const oversizeItems=[];
-  allItems.forEach(item=>{
-    const issues = checkOversizeForItem(item);
-    if(issues.length) oversizeItems.push({item,issues});
-  });
-  
-  if(oversizeItems.length){
-    // Show oversize modal and wait for user decision
-    const allowed = await showOversizeModal(oversizeItems);
-    if(!allowed){return;} // User cancelled
-  }
-  
-  // Run packing algorithm
-  const plan = runFFD(allItems, mode, fixedCode);
-  currentPlan = plan;
-  
-  // Render results
-  renderResults(plan);
-  switchTab('result');
-  document.getElementById('result-badge').style.display='inline';
-  document.getElementById('result-badge').textContent = plan.trucks.length;
-}
-
-function createLoadedPlacement(item, x, vehicle){
+function createLoadedPlacement(item, pos, vehicle){
+  const placementL = pos.l || item.l;
+  const placementW = pos.w || item.w;
   const placement = {
     instanceId: item.instanceId,
     item,
-    x,
+    x: pos.x || 0,
+    y: pos.y || 0,
+    l: placementL,
+    w: placementW,
+    rotated: Boolean(pos.rotated),
     layer: 1,
     stackCount: 1,
     inCavity: false,
@@ -768,9 +890,9 @@ function createLoadedPlacement(item, x, vehicle){
     cavityHostCode: '',
     cavityHostName: '',
     cavityX: 0,
-    overW: item.w>vehicle.w ? item.w-vehicle.w : 0,
+    overW: (pos.y||0)+placementW>vehicle.w ? ((pos.y||0)+placementW)-vehicle.w : 0,
     overH: item.h>vehicle.h ? item.h-vehicle.h : 0,
-    overL: (x+item.l)>vehicle.l ? (x+item.l)-vehicle.l : 0
+    overL: (pos.x||0)+placementL>vehicle.l ? ((pos.x||0)+placementL)-vehicle.l : 0
   };
   if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
     placement.cavity = {
@@ -785,109 +907,250 @@ function createLoadedPlacement(item, x, vehicle){
   }
   return placement;
 }
-function tryPlaceInCavity(truck, item){
+
+function getItemOrientations(item){
+  const options = [{l:item.l, w:item.w, rotated:false}];
+  if(item.l !== item.w) options.push({l:item.w, w:item.l, rotated:true});
+  return options;
+}
+
+function evaluateCavityPlacement(truck, item){
+  let best = null;
   for(const host of truck.loadedItems){
     if(host.inCavity || !host.cavity) continue;
     const cavity = host.cavity;
     const remainLen = cavity.l - cavity.usedLength;
     const remainWt = cavity.maxWt - cavity.usedWeight;
-    const fits = item.l <= remainLen && item.w <= cavity.w && item.h <= cavity.h && item.wt <= remainWt;
-    if(!fits) continue;
-    const placement = {
-      instanceId: item.instanceId,
-      item,
-      x: host.x + cavity.usedLength,
-      layer: 1,
-      stackCount: 1,
-      inCavity: true,
-      cavityHostInstanceId: host.instanceId,
-      cavityHostCode: host.item.code,
-      cavityHostName: host.item.name,
-      cavityX: cavity.usedLength,
-      overW: 0,
-      overH: 0,
-      overL: 0
-    };
-    if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
-      placement.cavity = { l:item.cavityL, w:item.cavityW, h:item.cavityH, maxWt:item.cavityMaxWt, usedLength:0, usedWeight:0, items:[] };
+    for(const o of getItemOrientations(item)){
+      const fits = o.l <= remainLen && o.w <= cavity.w && item.h <= cavity.h && item.wt <= remainWt;
+      if(!fits) continue;
+      const score = (remainLen - o.l) + ((remainWt - item.wt) * 0.001) + host.x * 0.0001;
+      if(!best || score < best.score){
+        best = { host, cavity, l:o.l, w:o.w, rotated:o.rotated, score };
+      }
     }
-    cavity.items.push(placement.instanceId);
-    cavity.usedLength += item.l + 50;
-    cavity.usedWeight += item.wt;
-    truck.loadedItems.push(placement);
-    truck.usedWeight += item.wt;
-    return true;
   }
-  return false;
+  return best;
 }
-function runFFD(items, mode, fixedCode){
-  const trucks=[];
-  
-  items.forEach(item=>{
-    let eligibleVehicles = vehicleDB;
-    if(mode==='fixed' && fixedCode) eligibleVehicles = vehicleDB.filter(v=>v.code===fixedCode);
-    let placed = false;
-    
-    for(let t=0; t<trucks.length; t++){
-      const truck = trucks[t];
-      const v = truck.vehicle;
-      const remainWt = v.maxWt - truck.usedWeight;
-      if(item.wt > remainWt*1.1) continue;
 
-      if(tryPlaceInCavity(truck, item)){
-        placed = true;
-        break;
-      }
-      
-      const itemFitsW = item.w<=v.w*1.2;
-      const itemFitsH = item.h<=v.h*1.2;
-      const remainLen = v.l - truck.usedLength;
-      const itemFitsL = item.l<=remainLen*1.1;
-      const itemFitsWt = item.wt<=remainWt*1.1;
-      
-      if(item.stack){
-        const sameTypeLoaded = truck.loadedItems.filter(li=>!li.inCavity && li.item.code===item.code && (li.stackCount||1) < (item.maxLayer||1));
-        if(sameTypeLoaded.length>0 && itemFitsW && itemFitsH && itemFitsWt){
-          const stackTarget = sameTypeLoaded[0];
-          const newCount = (stackTarget.stackCount||1) + 1;
-          const newH = item.h + ((newCount-1) * item.stackDelta);
-          if(newH<=v.h*1.2){
-            stackTarget.stackCount = newCount;
-            truck.usedWeight += item.wt;
-            placed = true;
-            break;
-          }
-        }
-      }
-      
-      if(!placed && itemFitsL && itemFitsW && itemFitsH && itemFitsWt){
-        const x = truck.usedLength;
-        truck.loadedItems.push(createLoadedPlacement(item, x, v));
-        truck.usedLength += item.l + 200;
-        truck.usedWeight += item.wt;
-        placed = true;
-        break;
+function placeInCavity(truck, item, candidate){
+  const {host, cavity, l, w, rotated} = candidate;
+  const placement = {
+    instanceId: item.instanceId,
+    item,
+    x: host.x + cavity.usedLength,
+    y: host.y + Math.max(0, (host.w - cavity.w) / 2),
+    l,
+    w,
+    rotated,
+    layer: 1,
+    stackCount: 1,
+    inCavity: true,
+    cavityHostInstanceId: host.instanceId,
+    cavityHostCode: host.item.code,
+    cavityHostName: host.item.name,
+    cavityX: cavity.usedLength,
+    overW: 0,
+    overH: 0,
+    overL: 0
+  };
+  if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
+    placement.cavity = { l:item.cavityL, w:item.cavityW, h:item.cavityH, maxWt:item.cavityMaxWt, usedLength:0, usedWeight:0, items:[] };
+  }
+  cavity.items.push(placement.instanceId);
+  cavity.usedLength += l + 50;
+  cavity.usedWeight += item.wt;
+  truck.loadedItems.push(placement);
+  truck.usedWeight += item.wt;
+}
+
+function createTruck(vehicle, truckNum){
+  return {
+    vehicle,
+    truckNum,
+    loadedItems:[],
+    usedWeight:0,
+    usedFloorArea:0,
+    maxUsedLength:0,
+    maxUsedWidth:0,
+    floorPlacements:0,
+    freeRects:[{x:0,y:0,l:vehicle.l,w:vehicle.w}]
+  };
+}
+
+function rectContained(a,b){
+  return a.x >= b.x && a.y >= b.y && (a.x+a.l) <= (b.x+b.l) && (a.y+a.w) <= (b.y+b.w);
+}
+
+function pruneFreeRects(rects){
+  const valid = rects.filter(r=>r.l>0 && r.w>0);
+  return valid.filter((r,idx)=>!valid.some((o,j)=>j!==idx && rectContained(r,o)));
+}
+
+function splitFreeRects(freeRects, used){
+  const results = [];
+  for(const rect of freeRects){
+    const noOverlap = used.x >= rect.x + rect.l || used.x + used.l <= rect.x || used.y >= rect.y + rect.w || used.y + used.w <= rect.y;
+    if(noOverlap){
+      results.push(rect);
+      continue;
+    }
+    if(used.x > rect.x) results.push({x:rect.x, y:rect.y, l:used.x-rect.x, w:rect.w});
+    if(used.x + used.l < rect.x + rect.l) results.push({x:used.x+used.l, y:rect.y, l:(rect.x+rect.l)-(used.x+used.l), w:rect.w});
+    if(used.y > rect.y) results.push({x:rect.x, y:rect.y, l:rect.l, w:used.y-rect.y});
+    if(used.y + used.w < rect.y + rect.w) results.push({x:rect.x, y:used.y+used.w, l:rect.l, w:(rect.y+rect.w)-(used.y+used.w)});
+  }
+  return pruneFreeRects(results);
+}
+
+function evaluateFloorPlacement(truck, item, allowOversize=false){
+  let best = null;
+  const vehicle = truck.vehicle;
+  for(let idx=0; idx<truck.freeRects.length; idx++){
+    const fr = truck.freeRects[idx];
+    for(const o of getItemOrientations(item)){
+      const fits = o.l <= fr.l && o.w <= fr.w && item.h <= vehicle.h && (truck.usedWeight + item.wt) <= vehicle.maxWt;
+      if(!fits) continue;
+      const wasteArea = (fr.l*fr.w) - (o.l*o.w);
+      const longPenalty = (fr.l - o.l);
+      const widePenalty = (fr.w - o.w);
+      const score = wasteArea + longPenalty*0.2 + widePenalty*0.2 + fr.x*0.01 + fr.y*0.01;
+      if(!best || score < best.score){
+        best = { idx, x:fr.x, y:fr.y, l:o.l, w:o.w, rotated:o.rotated, score, oversize:false };
       }
     }
-    
+  }
+  if(!best && allowOversize && truck.floorPlacements === 0 && (truck.usedWeight + item.wt) <= vehicle.maxWt*1.1){
+    const oversizeOption = getItemOrientations(item).sort((a,b)=>(Math.max(0,a.l-vehicle.l)+Math.max(0,a.w-vehicle.w))-(Math.max(0,b.l-vehicle.l)+Math.max(0,b.w-vehicle.w)))[0];
+    best = { idx:-1, x:0, y:0, l:oversizeOption.l, w:oversizeOption.w, rotated:oversizeOption.rotated, score:999999999, oversize:true };
+  }
+  return best;
+}
+
+function placeOnFloor(truck, item, spot){
+  const placement = createLoadedPlacement(item, spot, truck.vehicle);
+  truck.loadedItems.push(placement);
+  truck.usedWeight += item.wt;
+  truck.usedFloorArea += placement.l * placement.w;
+  truck.maxUsedLength = Math.max(truck.maxUsedLength, placement.x + placement.l);
+  truck.maxUsedWidth = Math.max(truck.maxUsedWidth, placement.y + placement.w);
+  truck.floorPlacements += 1;
+  if(!spot.oversize){
+    truck.freeRects = splitFreeRects(truck.freeRects, placement);
+  } else {
+    truck.freeRects = [];
+  }
+}
+
+function evaluateStackPlacement(truck, item){
+  const vehicle = truck.vehicle;
+  let best = null;
+  for(const base of truck.loadedItems.filter(li=>!li.inCavity && li.item.code===item.code && li.item.stack && (li.stackCount||1) < (li.item.maxLayer||1))){
+    const newCount = (base.stackCount||1) + 1;
+    const newHeight = item.h + (newCount-1) * (item.stackDelta||0);
+    if(newHeight > vehicle.h) continue;
+    if(truck.usedWeight + item.wt > vehicle.maxWt) continue;
+    const score = newHeight + base.x*0.001 + base.y*0.001;
+    if(!best || score < best.score) best = {base, newCount, newHeight, score};
+  }
+  return best;
+}
+
+function applyStackPlacement(truck, item, candidate){
+  candidate.base.stackCount = candidate.newCount;
+  candidate.base.overH = Math.max(0, candidate.newHeight - truck.vehicle.h);
+  truck.usedWeight += item.wt;
+}
+
+function getVehicleCandidates(item, mode, fixedCode, allowOversize){
+  let list = [...vehicleDB];
+  if(mode==='fixed' && fixedCode) list = list.filter(v=>v.code===fixedCode);
+  const fitting = list.filter(v => item.h <= v.h && item.wt <= v.maxWt && getItemOrientations(item).some(o=>o.l<=v.l && o.w<=v.w));
+  const candidates = fitting.length ? fitting : (allowOversize ? list.filter(v=>item.h <= v.h*1.2 && item.wt <= v.maxWt*1.1) : []);
+  if(mode==='prefer_large'){
+    candidates.sort((a,b)=> (b.l*b.w - a.l*a.w) || (b.maxWt-a.maxWt) || ((a.cost||0)-(b.cost||0)) );
+  } else if(mode==='prefer_small'){
+    candidates.sort((a,b)=> ((a.cost||0)-(b.cost||0)) || ((a.l*a.w)-(b.l*b.w)) || (a.maxWt-b.maxWt));
+  } else {
+    candidates.sort((a,b)=> ((a.cost||0)-(b.cost||0)) || ((a.l*a.w)-(b.l*b.w)) || (a.maxWt-b.maxWt));
+  }
+  return candidates;
+}
+
+function chooseBestTruckForNewItem(item, mode, fixedCode, allowOversize){
+  const candidates = getVehicleCandidates(item, mode, fixedCode, allowOversize);
+  let best = null;
+  for(const v of candidates){
+    const tempTruck = createTruck(v, 0);
+    const spot = evaluateFloorPlacement(tempTruck, item, allowOversize);
+    if(!spot) continue;
+    const oversizePenalty = spot.oversize ? 1000000 : 0;
+    const score = (v.cost||0) + oversizePenalty + (v.l*v.w - spot.l*spot.w)*0.00001;
+    if(!best || score < best.score) best = {vehicle:v, spot, score};
+  }
+  return best;
+}
+
+function runFFD(items, mode, fixedCode, allowOversize){
+  const trucks=[];
+
+  items.forEach(item=>{
+    let placed = false;
+
+    // A. 先嘗試所有既有車輛的中空區
+    let bestCavity = null;
+    trucks.forEach((truck, truckIdx)=>{
+      if(truck.usedWeight + item.wt > truck.vehicle.maxWt) return;
+      const candidate = evaluateCavityPlacement(truck, item);
+      if(candidate && (!bestCavity || candidate.score < bestCavity.score)) bestCavity = {truckIdx, candidate, score:candidate.score};
+    });
+    if(bestCavity){
+      placeInCavity(trucks[bestCavity.truckIdx], item, bestCavity.candidate);
+      placed = true;
+    }
+
+    // B. 再嘗試所有既有車輛的平面空間（長+寬）
     if(!placed){
-      let bestVehicle = null;
-      if(mode==='fixed'&&fixedCode){
-        bestVehicle = vehicleDB.find(v=>v.code===fixedCode);
-      } else {
-        const sorted=[...eligibleVehicles].sort((a,b)=> mode==='prefer_large' ? b.maxWt-a.maxWt : a.maxWt-b.maxWt);
-        bestVehicle = sorted.find(v=>item.l<=v.l*1.1&&item.w<=v.w*1.2&&item.h<=v.h*1.2&&item.wt<=v.maxWt*1.1) || sorted[sorted.length-1];
+      let bestFloor = null;
+      trucks.forEach((truck, truckIdx)=>{
+        const candidate = evaluateFloorPlacement(truck, item, false);
+        if(candidate){
+          const score = candidate.score + (truck.vehicle.cost||0)*0.01;
+          if(!bestFloor || score < bestFloor.score) bestFloor = {truckIdx, candidate, score};
+        }
+      });
+      if(bestFloor){
+        placeOnFloor(trucks[bestFloor.truckIdx], item, bestFloor.candidate);
+        placed = true;
       }
-      if(!bestVehicle) bestVehicle = vehicleDB[vehicleDB.length-1];
-      const newTruck={ vehicle:bestVehicle, loadedItems:[], usedLength:0, usedWeight:0, truckNum:trucks.length+1 };
-      newTruck.loadedItems.push(createLoadedPlacement(item, 0, bestVehicle));
-      newTruck.usedLength = item.l + 200;
-      newTruck.usedWeight = item.wt;
-      trucks.push(newTruck);
+    }
+
+    // C. 平面真的無法放入後，才考慮疊放
+    if(!placed){
+      let bestStack = null;
+      trucks.forEach((truck, truckIdx)=>{
+        const candidate = evaluateStackPlacement(truck, item);
+        if(candidate && (!bestStack || candidate.score < bestStack.score)) bestStack = {truckIdx, candidate, score:candidate.score};
+      });
+      if(bestStack){
+        applyStackPlacement(trucks[bestStack.truckIdx], item, bestStack.candidate);
+        placed = true;
+      }
+    }
+
+    // D. 最後才新開車，並納入費用一起優化
+    if(!placed){
+      const bestNewTruck = chooseBestTruckForNewItem(item, mode, fixedCode, allowOversize);
+      const vehicle = bestNewTruck?.vehicle || vehicleDB[vehicleDB.length-1];
+      const truck = createTruck(vehicle, trucks.length+1);
+      const spot = bestNewTruck?.spot || evaluateFloorPlacement(truck, item, allowOversize) || {x:0,y:0,l:item.l,w:item.w,rotated:false,oversize:true};
+      placeOnFloor(truck, item, spot);
+      trucks.push(truck);
     }
   });
-  
-  return {trucks, totalItems:items.length, totalWeight:items.reduce((s,i)=>s+i.wt,0)};
+
+  const totalCost = trucks.reduce((s,t)=>s+(t.vehicle.cost||0),0);
+  return {trucks, totalItems:items.length, totalWeight:items.reduce((s,i)=>s+i.wt,0), totalCost};
 }
 
 // ===================== OVERSIZE MODAL =====================
@@ -924,11 +1187,9 @@ function renderResults(plan){
   const div=document.getElementById('resultContent');
   const totalTrucks=plan.trucks.length;
   const totalWt=(plan.totalWeight/1000).toFixed(2);
-  
-  // Count oversize
+  const totalCost = (plan.totalCost||0).toLocaleString();
   const oversizeTrucks = plan.trucks.filter(t=>t.loadedItems.some(li=>li.overW>0||li.overH>0||li.overL>0)).length;
-  
-  // Summary
+
   let html=`
   <div class="summary-grid">
     <div class="stat-card">
@@ -944,27 +1205,28 @@ function renderResults(plan){
       <div class="stat-label">⚖️ 總貨物重量 (t)</div>
     </div>
     <div class="stat-card ${oversizeTrucks>0?'warning':'success'}">
-      <div class="stat-value">${oversizeTrucks}</div>
-      <div class="stat-label">⚠️ 超限車輛台數</div>
+      <div class="stat-value">${totalCost}</div>
+      <div class="stat-label">💰 預估總運輸費用</div>
     </div>
   </div>
   <div class="flex-between mb-16 no-print">
-    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案，點擊各車卡片查看詳細示意圖</div>
+    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案；演算法已優先利用車板 <b>長度 + 寬度</b> 平面空間，再進行疊放。</div>
     <div class="flex gap-8">
       <button class="btn btn-ghost" onclick="switchTab('shipment')">← 返回修改清單</button>
+      <button class="btn btn-ghost" onclick="exportResultExcel()">📤 匯出 Excel</button>
+      <button class="btn btn-ghost" onclick="exportResultPDF()">📄 匯出 PDF</button>
       <button class="btn btn-accent" onclick="window.print()">🖨️ 列印報表</button>
     </div>
   </div>`;
-  
-  // Each truck card
+
   plan.trucks.forEach((truck,tidx)=>{
     const v = truck.vehicle;
-    const weightRate = Math.min(100,(truck.usedWeight/v.maxWt*100)).toFixed(1);
-    const lenRate = Math.min(100,(truck.usedLength/v.l*100)).toFixed(1);
+    const weightRate = ((truck.usedWeight/v.maxWt)*100).toFixed(1);
+    const lenRate = ((truck.maxUsedLength/v.l)*100).toFixed(1);
+    const widthRate = ((truck.maxUsedWidth/v.w)*100).toFixed(1);
+    const areaRate = ((truck.usedFloorArea/(v.l*v.w))*100).toFixed(1);
     const hasOversize = truck.loadedItems.some(li=>li.overW>0||li.overH>0||li.overL>0);
     const overWt = truck.usedWeight>v.maxWt;
-    
-    // Build alert tags
     let alertTags='';
     if(overWt) alertTags+=`<span class="alert-tag alert-overweight">⚠️ 超重 +${((truck.usedWeight-v.maxWt)/1000).toFixed(2)}t</span>`;
     truck.loadedItems.forEach(li=>{
@@ -972,14 +1234,14 @@ function renderResults(plan){
       if(li.overW>0) alertTags+=`<span class="alert-tag alert-overwide">↕️ 超寬 +${li.overW}mm</span>`;
       if(li.overH>0) alertTags+=`<span class="alert-tag alert-overtall">↑ 超高 +${li.overH}mm</span>`;
     });
-    
+
     html+=`
     <div class="truck-card ${hasOversize||overWt?'oversize-truck':''}" id="truck_${tidx}">
       <div class="truck-card-header">
         <div class="t-num">${tidx+1}</div>
         <div class="t-info">
           <div class="t-name">第 ${tidx+1} 台車 — ${v.name}</div>
-          <div class="t-spec">載貨區：${v.l}×${v.w}×${v.h} mm ｜ 最大載重：${(v.maxWt/1000).toFixed(1)}t ｜ 底板高：${v.floor}mm</div>
+          <div class="t-spec">載貨區：${v.l}×${v.w}×${v.h} mm ｜ 最大載重：${(v.maxWt/1000).toFixed(1)}t ｜ 底板高：${v.floor}mm ｜ 運輸費用：NT$ ${(v.cost||0).toLocaleString()}</div>
         </div>
         ${alertTags?`<div class="t-alerts">${alertTags}</div>`:''}
       </div>
@@ -987,27 +1249,25 @@ function renderResults(plan){
         <div class="grid-2">
           <div>
             <div class="progress-wrap">
-              <div class="progress-label"><span>⚖️ 重量使用率</span><span style="font-weight:700;color:${parseFloat(weightRate)>100?'var(--danger)':parseFloat(weightRate)>85?'var(--warning)':'var(--success)'}">
-                ${(truck.usedWeight/1000).toFixed(2)}t / ${(v.maxWt/1000).toFixed(1)}t = ${weightRate}%
-              </span></div>
+              <div class="progress-label"><span>⚖️ 重量使用率</span><span style="font-weight:700;color:${parseFloat(weightRate)>100?'var(--danger)':parseFloat(weightRate)>85?'var(--warning)':'var(--success)'}">${(truck.usedWeight/1000).toFixed(2)}t / ${(v.maxWt/1000).toFixed(1)}t = ${weightRate}%</span></div>
               <div class="progress"><div class="progress-bar ${parseFloat(weightRate)>100?'progress-over':'progress-weight'}" style="width:${Math.min(100,parseFloat(weightRate))}%"></div></div>
             </div>
           </div>
           <div>
             <div class="progress-wrap">
-              <div class="progress-label"><span>📏 長度使用率</span><span style="font-weight:700;color:${parseFloat(lenRate)>100?'var(--danger)':parseFloat(lenRate)>85?'var(--warning)':'var(--success)'}">
-                ${(truck.usedLength/1000).toFixed(2)}m / ${(v.l/1000).toFixed(1)}m = ${lenRate}%
-              </span></div>
-              <div class="progress"><div class="progress-bar ${parseFloat(lenRate)>100?'progress-over':'progress-vol'}" style="width:${Math.min(100,parseFloat(lenRate))}%"></div></div>
+              <div class="progress-label"><span>🧱 平面使用率</span><span style="font-weight:700;color:${parseFloat(areaRate)>85?'var(--warning)':'var(--success)'}">${(truck.usedFloorArea/1000000).toFixed(2)}㎡ / ${(v.l*v.w/1000000).toFixed(2)}㎡ = ${areaRate}%</span></div>
+              <div class="progress"><div class="progress-bar progress-vol" style="width:${Math.min(100,parseFloat(areaRate))}%"></div></div>
             </div>
           </div>
         </div>
-        <!-- LOADED ITEMS TABLE -->
+        <div class="grid-2 mt-8">
+          <div class="tooltip-warn">📏 長度使用率：${lenRate}%（最大使用至 ${(truck.maxUsedLength/1000).toFixed(2)}m / ${(v.l/1000).toFixed(2)}m）</div>
+          <div class="tooltip-warn">↔️ 寬度使用率：${widthRate}%（最大使用至 ${(truck.maxUsedWidth/1000).toFixed(2)}m / ${(v.w/1000).toFixed(2)}m）</div>
+        </div>
         <div class="table-wrap mt-16">
           <table>
             <thead><tr>
-              <th>#</th><th>設備名稱</th><th>長×寬×高 (mm)</th><th>重量</th>
-              <th>裝載位置</th><th>疊放層</th><th>超限狀態</th>
+              <th>#</th><th>設備名稱</th><th>原始尺寸 (mm)</th><th>重量</th><th>平面位置</th><th>配置方式</th><th>超限狀態</th>
             </tr></thead>
             <tbody>
               ${truck.loadedItems.map((li,i)=>{
@@ -1015,21 +1275,20 @@ function renderResults(plan){
                 if(li.overL>0) issues.push(`<span class="badge badge-warning">超長+${li.overL}mm</span>`);
                 if(li.overW>0) issues.push(`<span class="badge badge-danger">超寬+${li.overW}mm</span>`);
                 if(li.overH>0) issues.push(`<span class="badge badge-info">超高+${li.overH}mm</span>`);
-                const stackH = li.item.h + (li.stackCount-1)*li.item.stackDelta;
+                const stackH = li.item.h + ((li.stackCount||1)-1)*(li.item.stackDelta||0);
                 return `<tr>
                   <td>${i+1}</td>
                   <td><b>${li.item.displayName||li.item.name}</b><br><small style="color:var(--text-light)">${li.item.code}</small></td>
-                  <td>${li.item.l}×${li.item.w}×${li.item.h}</td>
-                  <td>${(li.item.wt/1000).toFixed(2)}t${li.stackCount>1?`<br><small>×${li.stackCount}件</small>`:''}</td>
-                  <td>${li.inCavity ? `置入 ${li.cavityHostCode} 中空區<br><small style="color:var(--text-light)">中空內位置 ${(li.cavityX/1000).toFixed(2)}m</small>` : `距車頭 ${(li.x/1000).toFixed(2)}m`}</td>
-                  <td>${li.inCavity ? `<span class="badge badge-info">中空區內裝載</span>` : (li.stackCount>1?`${li.stackCount}件疊放`:'單層')}</td>
-                  <td>${li.inCavity?'<span class="badge badge-info">中空配置</span> ':''}${issues.length?issues.join(' '):'<span class="badge badge-success">正常</span>'}</td>
+                  <td>${li.item.l}×${li.item.w}×${li.item.h}${li.rotated?`<br><small style="color:var(--text-light)">已旋轉 90° 擺放</small>`:""}</td>
+                  <td>${(li.item.wt/1000).toFixed(2)}t${(li.stackCount||1)>1?`<br><small>疊放 ${li.stackCount} 件 / 高 ${stackH}mm</small>`:''}</td>
+                  <td>${li.inCavity ? `置入 ${li.cavityHostCode} 中空區` : `X ${(li.x/1000).toFixed(2)}m / Y ${(li.y/1000).toFixed(2)}m`}</td>
+                  <td>${li.inCavity?'<span class="badge badge-info">中空配置</span>':((li.stackCount||1)>1?`<span class="badge badge-warning">先平面後疊放 ×${li.stackCount}</span>`:'<span class="badge badge-success">平面配置</span>')}</td>
+                  <td>${issues.length?issues.join(' '):'<span class="badge badge-success">正常</span>'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
         </div>
-        <!-- DIAGRAMS (both views) -->
         <div class="diagram-row">
           <div class="diagram-box">
             <div class="diagram-title">🦅 俯視圖（Top View）</div>
@@ -1040,15 +1299,12 @@ function renderResults(plan){
             <canvas id="sideCanvas_${tidx}" height="200"></canvas>
           </div>
         </div>
-        <!-- LEGEND -->
         <div class="legend-wrap" id="legend_${tidx}" style="margin-top:10px"></div>
       </div>
     </div>`;
   });
-  
+
   div.innerHTML=html;
-  
-  // Draw all diagrams
   setTimeout(()=>{
     plan.trucks.forEach((truck,tidx)=>{
       drawTopView(tidx, truck);
@@ -1100,13 +1356,13 @@ function drawTopView(tidx, truck){
   topItems.forEach(li=>{
     const color=getColor(li.item.code);
     const ix=offX+li.x*scale;
-    const iw=li.item.l*scale;
-    const itemPxW=li.item.w*scale;
-    const iy=offY+(truckPxW-itemPxW)/2;
-    const drawIW=Math.min(iw,truckPxL-(ix-offX));
-    const drawIH=Math.min(itemPxW,truckPxW);
-    const isOverL=li.item.l>(v.l-li.x);
-    const isOverW=li.item.w>v.w;
+    const iw=li.l*scale;
+    const itemPxW=li.w*scale;
+    const iy=offY+li.y*scale;
+    const drawIW=Math.min(iw,Math.max(0,(offX+truckPxL)-ix));
+    const drawIH=Math.min(itemPxW,Math.max(0,(offY+truckPxW)-iy));
+    const isOverL=(li.x+li.l)>v.l;
+    const isOverW=(li.y+li.w)>v.w;
     ctx.fillStyle=color+'cc';
     ctx.fillRect(ix,iy,drawIW,drawIH);
     ctx.strokeStyle=color;
@@ -1115,7 +1371,7 @@ function drawTopView(tidx, truck){
 
     if(li.cavity){
       const cavX = ix + Math.max(2, ((li.item.l - li.cavity.l) * scale) / 2);
-      const cavY = iy + Math.max(2, ((li.item.w - li.cavity.w) * scale) / 2);
+      const cavY = iy + Math.max(2, ((li.w - li.cavity.w) * scale) / 2);
       const cavW = Math.max(8, li.cavity.l * scale);
       const cavH = Math.max(8, li.cavity.w * scale);
       ctx.save();
@@ -1158,14 +1414,14 @@ function drawTopView(tidx, truck){
     const color=getColor(li.item.code);
     const hostX=offX+host.x*scale;
     const hostW=host.item.l*scale;
-    const hostY=offY+(truckPxW-(host.item.w*scale))/2;
-    const hostH=host.item.w*scale;
+    const hostY=offY+host.y*scale;
+    const hostH=host.w*scale;
     const cavX = hostX + Math.max(2, ((host.item.l - host.cavity.l) * scale) / 2);
     const cavY = hostY + Math.max(2, ((host.item.w - host.cavity.w) * scale) / 2);
     const ix = cavX + li.cavityX*scale;
-    const iw = li.item.l*scale;
+    const iw = li.l*scale;
     const ih = li.item.w*scale;
-    const iy = cavY + ((host.cavity.w - li.item.w) * scale) / 2;
+    const iy = cavY + ((host.cavity.w - li.w) * scale) / 2;
     ctx.fillStyle=color;
     ctx.fillRect(ix,iy,iw,ih);
     ctx.strokeStyle='#111';
@@ -1218,7 +1474,7 @@ function drawSideView(tidx, truck){
   topItems.forEach(li=>{
     const color=getColor(li.item.code);
     const ix=offX+li.x*scale;
-    const iw=li.item.l*scale;
+    const iw=li.l*scale;
     const stackedH=li.item.h+(li.stackCount-1)*li.item.stackDelta;
     const iph=stackedH*scale;
     const iy=baseY-floorH-iph;
@@ -1245,7 +1501,7 @@ function drawSideView(tidx, truck){
     if(!host || !host.cavity) return;
     const color=getColor(li.item.code);
     const hostX=offX+host.x*scale;
-    const hostIW=host.item.l*scale;
+    const hostIW=host.l*scale;
     const hostStackH=host.item.h+(host.stackCount-1)*host.item.stackDelta;
     const hostIH=hostStackH*scale;
     const hostY=baseY-floorH-hostIH;
@@ -1292,6 +1548,7 @@ function buildLegend(tidx, truck){
 
 // ===================== EQUIPMENT DB CRUD =====================
 function renderEquipTable(){
+  sortEquipDB();
   document.getElementById('equipTbody').innerHTML=equipDB.map((e,i)=>`<tr>
     <td><code>${e.code}</code></td><td><b>${e.name}</b></td><td>${e.cat}</td>
     <td>${e.l}</td><td>${e.w}</td><td>${e.h}</td><td>${e.wt.toLocaleString()}</td>
@@ -1359,10 +1616,11 @@ function resetEquipDB(){if(confirm('確定要重置為預設設備資料？')){e
 
 // ===================== VEHICLE DB CRUD =====================
 function renderVehicleTable(){
+  sortVehicleDB();
   document.getElementById('vehicleTbody').innerHTML=vehicleDB.map((v,i)=>`<tr>
     <td><code>${v.code}</code></td><td><b>${v.name}</b></td>
     <td>${v.l}</td><td>${v.w}</td><td>${v.h}</td><td>${(v.maxWt/1000).toFixed(1)}t</td>
-    <td>${v.floor}</td><td style="font-size:12px;color:var(--text-light)">${v.note}</td>
+    <td>${v.floor}</td><td>NT$ ${(v.cost||0).toLocaleString()}</td><td style="font-size:12px;color:var(--text-light)">${v.note}</td>
     <td><div class="flex gap-8">
       <button class="btn btn-ghost btn-sm" onclick="openVehicleModal(${i})">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${i})">🗑️</button>
@@ -1371,13 +1629,13 @@ function renderVehicleTable(){
   renderFixedVehicleSelect();
 }
 function renderFixedVehicleSelect(){
-  document.getElementById('fixedVehicleSelect').innerHTML=vehicleDB.map(v=>`<option value="${v.code}">${v.name} (${(v.maxWt/1000).toFixed(0)}t)</option>`).join('');
+  document.getElementById('fixedVehicleSelect').innerHTML=vehicleDB.map(v=>`<option value="${v.code}">${v.name} (${(v.maxWt/1000).toFixed(0)}t / NT$ ${(v.cost||0).toLocaleString()})</option>`).join('');
 }
 function openVehicleModal(idx=-1){
   editVehicleIdx=idx;
   document.getElementById('vehicleModalTitle').textContent=idx<0?'新增車型':'編輯車型';
-  const v=idx>=0?vehicleDB[idx]:{code:'',name:'',l:'',w:'',h:'',maxWt:'',floor:'1200',note:''};
-  ['code','name','l','w','h','floor','note'].forEach(f=>document.getElementById('v_'+f).value=v[f]||'');
+  const v=idx>=0?vehicleDB[idx]:{code:'',name:'',l:'',w:'',h:'',maxWt:'',floor:'1200',cost:'0',note:''};
+  ['code','name','l','w','h','floor','note','cost'].forEach(f=>document.getElementById('v_'+f).value=v[f]||'');
   document.getElementById('v_wt').value=v.maxWt||'';
   document.getElementById('vehicleModal').classList.add('show');
 }
@@ -1390,6 +1648,7 @@ function saveVehicle(){
     h:parseInt(document.getElementById('v_h').value)||0,
     maxWt:parseInt(document.getElementById('v_wt').value)||0,
     floor:parseInt(document.getElementById('v_floor').value)||1200,
+    cost:parseInt(document.getElementById('v_cost').value)||0,
     note:document.getElementById('v_note').value.trim()
   };
   if(!v.code||!v.name||!v.l||!v.w||!v.h||!v.maxWt){alert('請填寫完整車輛規格！');return;}
@@ -1481,6 +1740,7 @@ function importVehicleExcel(event){
         h: parseNumericValue(getRowValue(row,['h','高度限制','高度','高度限制(mm)'])) || 0,
         maxWt: parseNumericValue(getRowValue(row,['maxwt','最大載重','最大載重(kg)','載重'])) || 0,
         floor: parseNumericValue(getRowValue(row,['floor','底板離地高','底板高'])) || 1200,
+        cost: parseNumericValue(getRowValue(row,['cost','運輸費用','單趟運輸費用','費用','transport_cost'])) || 0,
         note: (getRowValue(row,['note','適用說明','備註']) || '').toString().trim()
       };
       if(!vehicle.l || !vehicle.w || !vehicle.h || !vehicle.maxWt){ skipped++; return; }
@@ -1490,7 +1750,7 @@ function importVehicleExcel(event){
     });
     saveVehicleDB(); renderVehicleTable();
     event.target.value = '';
-    alert(`✅ 車輛匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：車輛代碼/車型名稱/載貨長/載貨寬/高度限制/最大載重/底板離地高/適用說明`);
+    alert(`✅ 車輛匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：車輛代碼/車型名稱/載貨長/載貨寬/高度限制/最大載重/底板離地高/運輸費用/適用說明`);
   });
 }
 function deleteVehicle(i){if(confirm(`確定要刪除「${vehicleDB[i].name}」？`)){vehicleDB.splice(i,1);saveVehicleDB();renderVehicleTable();}}
@@ -1509,6 +1769,113 @@ window.addEventListener('resize',()=>{
     });
   }
 });
+
+
+function downloadWorkbook(workbook, filename){
+  if(typeof XLSX === 'undefined'){ alert('Excel 匯出模組尚未載入'); return; }
+  XLSX.writeFile(workbook, filename);
+}
+function exportEquipExcel(){
+  const data = equipDB.map(e=>(
+    {設備代碼:e.code, 設備名稱:e.name, 類別:e.cat, 長度_mm:e.l, 寬度_mm:e.w, 高度_mm:e.h, 重量_kg:e.wt, 可疊放:e.stack?'是':'否', 最大疊放層數:e.maxLayer, 疊高增量_mm:e.stackDelta, 中空可用:e.cavityEnabled?'是':'否', 中空長度_mm:e.cavityL||0, 中空寬度_mm:e.cavityW||0, 中空高度_mm:e.cavityH||0, 中空容許重量_kg:e.cavityMaxWt||0, 備註:e.note||''}
+  ));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), '設備資料庫');
+  downloadWorkbook(wb, '設備資料庫.xlsx');
+}
+function exportVehicleExcel(){
+  const data = vehicleDB.map(v=>(
+    {車輛代碼:v.code, 車型名稱:v.name, 載貨長_mm:v.l, 載貨寬_mm:v.w, 高度限制_mm:v.h, 最大載重_kg:v.maxWt, 底板高_mm:v.floor, 單趟運輸費用:v.cost||0, 適用說明:v.note||''}
+  ));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), '車輛資料庫');
+  downloadWorkbook(wb, '車輛資料庫.xlsx');
+}
+function exportResultExcel(){
+  if(!currentPlan){ alert('請先執行裝車評估方案'); return; }
+  const summary = [{總車輛數:currentPlan.trucks.length, 總設備件數:currentPlan.totalItems, 總重量_kg:currentPlan.totalWeight, 總運輸費用:currentPlan.totalCost||0}];
+  const detail = [];
+  currentPlan.trucks.forEach((truck, idx)=>{
+    truck.loadedItems.forEach((li, i)=>{
+      detail.push({
+        車輛序號: idx+1,
+        車型: truck.vehicle.name,
+        車輛代碼: truck.vehicle.code,
+        車輛費用: truck.vehicle.cost||0,
+        設備序號: i+1,
+        設備代碼: li.item.code,
+        設備名稱: li.item.displayName||li.item.name,
+        原始長_mm: li.item.l,
+        原始寬_mm: li.item.w,
+        原始高_mm: li.item.h,
+        擺放長_mm: li.l||li.item.l,
+        擺放寬_mm: li.w||li.item.w,
+        旋轉90度: li.rotated?'是':'否',
+        重量_kg: li.item.wt,
+        X位置_mm: li.x||0,
+        Y位置_mm: li.y||0,
+        疊放件數: li.stackCount||1,
+        中空配置: li.inCavity?'是':'否',
+        超長_mm: li.overL||0,
+        超寬_mm: li.overW||0,
+        超高_mm: li.overH||0
+      });
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), '結果摘要');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), '裝載明細');
+  downloadWorkbook(wb, '裝車評估結果.xlsx');
+}
+async function exportNodeToPDF(nodeOrSelector, filename, title){
+  const source = typeof nodeOrSelector === 'string' ? document.querySelector(nodeOrSelector) : nodeOrSelector;
+  if(!source){ alert('找不到可匯出的內容'); return; }
+  if(typeof html2canvas === 'undefined' || !window.jspdf){ alert('PDF 匯出模組尚未載入'); return; }
+  const cloneWrap = document.createElement('div');
+  cloneWrap.style.position = 'fixed';
+  cloneWrap.style.left = '-100000px';
+  cloneWrap.style.top = '0';
+  cloneWrap.style.width = '1400px';
+  cloneWrap.style.background = '#fff';
+  cloneWrap.style.zIndex = '-1';
+  const clone = source.cloneNode(true);
+  clone.style.display = 'block';
+  cloneWrap.appendChild(clone);
+  document.body.appendChild(cloneWrap);
+  await new Promise(r=>setTimeout(r,150));
+  const canvas = await html2canvas(clone, {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+  document.body.removeChild(cloneWrap);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 8;
+  const imgW = pageW - margin*2;
+  const imgH = canvas.height * imgW / canvas.width;
+  const pageImgH = pageH - margin*2;
+  let remaining = imgH;
+  let position = margin;
+  let sY = 0;
+
+  while(remaining > 0){
+    const sliceHeightPx = Math.min(canvas.height - sY, Math.floor((pageImgH * canvas.width) / imgW));
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = canvas.width;
+    sliceCanvas.height = sliceHeightPx;
+    sliceCanvas.getContext('2d').drawImage(canvas, 0, sY, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+    const sliceData = sliceCanvas.toDataURL('image/png');
+    const sliceH = sliceHeightPx * imgW / canvas.width;
+    if(sY > 0) pdf.addPage();
+    pdf.addImage(sliceData, 'PNG', margin, margin, imgW, sliceH);
+    sY += sliceHeightPx;
+    remaining -= sliceH;
+  }
+  pdf.save(filename);
+}
+function exportEquipPDF(){ exportNodeToPDF('#page-equipment .card', '設備資料庫.pdf', '設備資料庫'); }
+function exportVehiclePDF(){ exportNodeToPDF('#page-vehicle .card', '車輛資料庫.pdf', '車輛資料庫'); }
+function exportResultPDF(){ if(!currentPlan){ alert('請先執行裝車評估方案'); return; } exportNodeToPDF('#resultContent', '裝車評估結果.pdf', '裝車評估結果'); }
 
 init();
 </script>
