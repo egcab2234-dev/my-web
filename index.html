@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>混凝土預拌機械裝車疊貨自動評估系統 v2.0</title>
+<title>混凝土預拌機械裝車疊貨自動評估系統 v5.0 — 雲端同步 / 多重中空位 / 重量排序</title>
 <style>
 :root {
   --primary:#1a2b4a; --primary-light:#2d4a7a; --primary-lighter:#3d5f9a;
@@ -181,6 +181,28 @@ select.form-control{cursor:pointer}
 ::-webkit-scrollbar-track{background:#f0f3f8}
 ::-webkit-scrollbar-thumb{background:#c0c8d8;border-radius:3px}
 .category-header{padding:8px 14px;background:#f0f3f8;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e4e8f0}
+
+/* SYNC PANEL */
+.sync-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:.2s}
+.sync-status.synced{background:rgba(39,174,96,.2);color:#2ecc71;border:1px solid rgba(39,174,96,.3)}
+.sync-status.unsynced{background:rgba(231,76,60,.2);color:#e74c3c;border:1px solid rgba(231,76,60,.3)}
+.sync-status.syncing{background:rgba(243,156,18,.2);color:#f39c12;border:1px solid rgba(243,156,18,.3);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.sync-modal{max-width:560px}
+.sync-modal .sync-section{margin-bottom:16px;padding:16px;background:#f8faff;border-radius:10px;border:1px solid var(--border)}
+.sync-modal .sync-section h3{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sync-modal .sync-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sync-log{max-height:120px;overflow-y:auto;background:#1a2b4a;color:#7eb8f7;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;margin-top:10px}
+.sync-log .log-ok{color:#2ecc71} .sync-log .log-err{color:#e74c3c} .sync-log .log-warn{color:#f39c12}
+/* CAVITY LIST */
+.cavity-list{display:flex;flex-direction:column;gap:8px}
+.cavity-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px;background:#f8faff;border:1px solid var(--border);border-radius:8px}
+.cavity-row .form-group{margin-bottom:0}
+.cavity-row .cavity-del{width:32px;height:32px;border:none;background:var(--danger);color:#fff;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.cavity-row .cavity-del:hover{background:#c0392b}
+.add-cavity-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border:2px dashed var(--border);border-radius:8px;background:transparent;color:var(--primary);cursor:pointer;font-size:12px;font-weight:600;transition:.2s;width:100%}
+.add-cavity-btn:hover{border-color:var(--primary);background:rgba(26,43,74,.04)}
+
 </style>
 </head>
 <body>
@@ -195,9 +217,10 @@ select.form-control{cursor:pointer}
     </div>
   </div>
   <div class="header-right">
+    <span class="sync-status unsynced" id="syncStatusBtn" onclick="openSyncModal()" title="雲端同步設定">☁️ 未連線</span>
     <button class="btn btn-ghost" onclick="loadDemo()" style="color:#fff;border-color:rgba(255,255,255,.3)">📋 載入示範資料</button>
     <button class="btn btn-ghost" onclick="window.print()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
-    <span class="version-badge">v2.0</span>
+    <span class="version-badge">v5.0</span>
   </div>
 </div>
 
@@ -230,6 +253,55 @@ select.form-control{cursor:pointer}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeOversizeModal(false)">❌ 取消評估</button>
       <button class="btn btn-danger" onclick="closeOversizeModal(true)">⚠️ 允許超限，繼續產出方案</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- SYNC MODAL -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal sync-modal">
+    <div class="modal-header" style="background:linear-gradient(135deg,#2980b9,#3498db)">
+      <span style="font-size:22px">☁️</span>
+      <div>
+        <h2>雲端同步設定 (GitHub Gist)</h2>
+        <p style="font-size:12px;opacity:.85;margin-top:2px">透過 GitHub Gist 跨裝置同步設備與車輛資料</p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="sync-section">
+        <h3>🔑 GitHub 認證</h3>
+        <div class="form-group">
+          <label class="form-label">Personal Access Token</label>
+          <input class="form-control" id="sync_token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          <small style="color:var(--text-light);font-size:11px">需要 <code>gist</code> scope 權限。前往 GitHub → Settings → Developer settings → Personal access tokens 建立。</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gist ID (選填，留空將自動建立新 Gist)</label>
+          <input class="form-control" id="sync_gist_id" placeholder="如：a1b2c3d4e5f6...">
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="sync_auto" style="width:16px;height:16px"> 儲存時自動同步到雲端
+          </label>
+        </div>
+      </div>
+      <div class="sync-section">
+        <h3>⚡ 同步操作</h3>
+        <div class="sync-actions">
+          <button class="btn btn-primary" onclick="syncPushToGist()">⬆️ 上傳到雲端</button>
+          <button class="btn btn-accent" onclick="syncPullFromGist()">⬇️ 從雲端下載</button>
+          <button class="btn btn-ghost" onclick="testSyncConnection()">🔗 測試連線</button>
+        </div>
+        <div class="sync-log" id="syncLog">等待操作...</div>
+      </div>
+      <div class="tooltip-warn">
+        ⚠️ Token 僅儲存於瀏覽器 localStorage，不會傳送到任何第三方伺服器。建議使用「Fine-grained token」並限制僅 Gist 權限。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('syncModal')">關閉</button>
+      <button class="btn btn-primary" onclick="saveSyncConfig()">💾 儲存設定</button>
     </div>
   </div>
 </div>
@@ -483,13 +555,9 @@ select.form-control{cursor:pointer}
           </select>
         </div>
         <div id="cavityFields" style="display:none; grid-column:1 / -1;">
-          <div class="tooltip-warn" style="margin-bottom:12px">💡 設定中空區域後，系統會優先嘗試把較小貨物放入此設備中空空間，不另外占用車板長度。</div>
-          <div class="grid-2">
-            <div class="form-group"><label class="form-label">中空長度 (mm)</label><input class="form-control" id="eq_cavity_l" type="number" min="1" value="0"></div>
-            <div class="form-group"><label class="form-label">中空寬度 (mm)</label><input class="form-control" id="eq_cavity_w" type="number" min="1" value="0"></div>
-            <div class="form-group"><label class="form-label">中空高度 (mm)</label><input class="form-control" id="eq_cavity_h" type="number" min="1" value="0"></div>
-            <div class="form-group"><label class="form-label">中空容許重量 (kg)</label><input class="form-control" id="eq_cavity_wt" type="number" min="1" value="0"></div>
-          </div>
+          <div class="tooltip-warn" style="margin-bottom:12px">💡 設定中空區域後，系統會優先嘗試把較小貨物放入此設備中空空間，不另外占用車板長度。可新增多個中空位置。</div>
+          <div class="cavity-list" id="cavityList"></div>
+          <button type="button" class="add-cavity-btn" onclick="addCavityRow()">＋ 新增中空位</button>
         </div>
       </div>
       <div class="form-group"><label class="form-label">備註</label><input class="form-control" id="eq_note"></div>
@@ -569,9 +637,208 @@ const DEFAULT_VEHICLES = [
   {code:'V09',name:'16米加長平板半掛車',l:16000,w:2500,h:2500,maxWt:28000,floor:1200,cost:40000,note:'集料倉整體、長型骨架'}
 ];
 
+
+// ===================== CLOUD SYNC (GitHub Gist) =====================
+function loadSyncConfig(){
+  try{
+    return JSON.parse(localStorage.getItem('syncConfig')||'null') || {token:'',gistId:'',auto:false};
+  }catch(e){ return {token:'',gistId:'',auto:false}; }
+}
+function saveSyncConfig(){
+  const config = {
+    token: document.getElementById('sync_token').value.trim(),
+    gistId: document.getElementById('sync_gist_id').value.trim(),
+    auto: document.getElementById('sync_auto').checked
+  };
+  localStorage.setItem('syncConfig', JSON.stringify(config));
+  updateSyncStatus();
+  syncLog('✅ 設定已儲存','ok');
+}
+function openSyncModal(){
+  const cfg = loadSyncConfig();
+  document.getElementById('sync_token').value = cfg.token||'';
+  document.getElementById('sync_gist_id').value = cfg.gistId||'';
+  document.getElementById('sync_auto').checked = !!cfg.auto;
+  document.getElementById('syncModal').classList.add('show');
+}
+function updateSyncStatus(){
+  const btn = document.getElementById('syncStatusBtn');
+  const cfg = loadSyncConfig();
+  if(cfg.token && cfg.gistId){
+    btn.className='sync-status synced'; btn.innerHTML='☁️ 已連線';
+  } else if(cfg.token){
+    btn.className='sync-status synced'; btn.innerHTML='☁️ 待同步';
+  } else {
+    btn.className='sync-status unsynced'; btn.innerHTML='☁️ 未連線';
+  }
+}
+function syncLog(msg, type=''){
+  const log = document.getElementById('syncLog');
+  const cls = type==='ok'?'log-ok':type==='err'?'log-err':type==='warn'?'log-warn':'';
+  log.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+async function testSyncConnection(){
+  const cfg = loadSyncConfig();
+  if(!cfg.token){ syncLog('❌ 請先填入 GitHub Token','err'); return; }
+  syncLog('🔗 測試 GitHub API 連線中...');
+  try{
+    const resp = await fetch('https://api.github.com/user', {headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json'}});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const user = await resp.json();
+    syncLog(`✅ 連線成功！GitHub 使用者：${user.login}`,'ok');
+  }catch(e){
+    syncLog('❌ 連線失敗：'+e.message,'err');
+  }
+}
+async function syncPushToGist(){
+  const cfg = loadSyncConfig();
+  if(!cfg.token){ syncLog('❌ 請先設定 GitHub Token','err'); return; }
+  const btn = document.getElementById('syncStatusBtn');
+  btn.className='sync-status syncing'; btn.innerHTML='☁️ 同步中...';
+  syncLog('⬆️ 上傳資料到 GitHub Gist...');
+  const payload = {
+    description: '混凝土裝車系統 - 設備與車輛資料同步 (自動產生)',
+    public: false,
+    files: {
+      'truck_loader_equipDB.json': { content: JSON.stringify(equipDB, null, 2) },
+      'truck_loader_vehicleDB.json': { content: JSON.stringify(vehicleDB, null, 2) },
+      'truck_loader_meta.json': { content: JSON.stringify({updatedAt:new Date().toISOString(),equipCount:equipDB.length,vehicleCount:vehicleDB.length},null,2) }
+    }
+  };
+  try{
+    let url, method;
+    if(cfg.gistId){
+      url = 'https://api.github.com/gists/'+cfg.gistId;
+      method = 'PATCH';
+    } else {
+      url = 'https://api.github.com/gists';
+      method = 'POST';
+    }
+    const resp = await fetch(url, {
+      method,
+      headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status+' '+await resp.text());
+    const gist = await resp.json();
+    if(!cfg.gistId){
+      cfg.gistId = gist.id;
+      document.getElementById('sync_gist_id').value = gist.id;
+      localStorage.setItem('syncConfig', JSON.stringify(cfg));
+    }
+    syncLog(`✅ 上傳成功！Gist ID：${gist.id}，設備 ${equipDB.length} 筆，車輛 ${vehicleDB.length} 筆`,'ok');
+    updateSyncStatus();
+  }catch(e){
+    syncLog('❌ 上傳失敗：'+e.message,'err');
+    updateSyncStatus();
+  }
+}
+async function syncPullFromGist(){
+  const cfg = loadSyncConfig();
+  if(!cfg.token||!cfg.gistId){ syncLog('❌ 請先設定 Token 和 Gist ID','err'); return; }
+  const btn = document.getElementById('syncStatusBtn');
+  btn.className='sync-status syncing'; btn.innerHTML='☁️ 同步中...';
+  syncLog('⬇️ 從 GitHub Gist 下載資料...');
+  try{
+    const resp = await fetch('https://api.github.com/gists/'+cfg.gistId, {
+      headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json'}
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const gist = await resp.json();
+    const equipFile = gist.files['truck_loader_equipDB.json'];
+    const vehicleFile = gist.files['truck_loader_vehicleDB.json'];
+    const metaFile = gist.files['truck_loader_meta.json'];
+    if(!equipFile||!vehicleFile) throw new Error('Gist 中找不到設備/車輛資料檔案');
+    const newEquip = JSON.parse(equipFile.content);
+    const newVehicle = JSON.parse(vehicleFile.content);
+    const meta = metaFile ? JSON.parse(metaFile.content) : {};
+    if(!confirm(`確定要從雲端下載並覆蓋本機資料？\n\n雲端資料：\n• 設備 ${newEquip.length} 筆\n• 車輛 ${newVehicle.length} 筆\n• 更新時間：${meta.updatedAt||'未知'}\n\n⚠️ 本機資料將被覆蓋！`)){
+      syncLog('⚠️ 使用者取消下載','warn');
+      updateSyncStatus();
+      return;
+    }
+    equipDB = migrateEquipCavities(newEquip);
+    vehicleDB = newVehicle;
+    saveEquipDB(); saveVehicleDB();
+    renderEquipTable(); renderEquipSelect(); renderVehicleTable();
+    syncLog(`✅ 下載成功！設備 ${equipDB.length} 筆，車輛 ${vehicleDB.length} 筆`,'ok');
+    updateSyncStatus();
+  }catch(e){
+    syncLog('❌ 下載失敗：'+e.message,'err');
+    updateSyncStatus();
+  }
+}
+async function autoSyncIfEnabled(){
+  const cfg = loadSyncConfig();
+  if(cfg.auto && cfg.token && cfg.gistId){
+    try{ await syncPushToGist(); }catch(e){ console.warn('Auto sync failed',e); }
+  }
+}
+
 let equipDB = [], vehicleDB = [], shipmentItems = [], editEquipIdx = -1, editVehicleIdx = -1;
 let oversizeCallback = null;
 let currentPlan = null;
+
+
+// ===================== MULTI-CAVITY HELPERS =====================
+function migrateEquipCavities(db){
+  return db.map(e=>{
+    if(e.cavities && Array.isArray(e.cavities)) return e; // already new format
+    // Migrate old single-cavity format
+    const cavities = [];
+    if(e.cavityEnabled && e.cavityL && e.cavityW && e.cavityH && e.cavityMaxWt){
+      cavities.push({id:1, l:e.cavityL, w:e.cavityW, h:e.cavityH, maxWt:e.cavityMaxWt});
+    }
+    const ne = {...e, cavities};
+    // remove old fields
+    delete ne.cavityEnabled; delete ne.cavityL; delete ne.cavityW; delete ne.cavityH; delete ne.cavityMaxWt;
+    return ne;
+  });
+}
+function getEquipCavities(e){
+  if(e.cavities && Array.isArray(e.cavities)) return e.cavities;
+  // legacy fallback
+  if(e.cavityEnabled && e.cavityL && e.cavityW && e.cavityH && e.cavityMaxWt){
+    return [{id:1, l:e.cavityL, w:e.cavityW, h:e.cavityH, maxWt:e.cavityMaxWt}];
+  }
+  return [];
+}
+let cavityCounter = 0;
+function addCavityRow(l=0,w=0,h=0,maxWt=0){
+  cavityCounter++;
+  const list = document.getElementById('cavityList');
+  const row = document.createElement('div');
+  row.className = 'cavity-row';
+  row.id = 'cavityRow_'+cavityCounter;
+  row.innerHTML = `
+    <div class="form-group"><label class="form-label">長度 (mm)</label><input class="form-control cavity-l" type="number" min="1" value="${l}"></div>
+    <div class="form-group"><label class="form-label">寬度 (mm)</label><input class="form-control cavity-w" type="number" min="1" value="${w}"></div>
+    <div class="form-group"><label class="form-label">高度 (mm)</label><input class="form-control cavity-h" type="number" min="1" value="${h}"></div>
+    <div class="form-group"><label class="form-label">容許重量 (kg)</label><input class="form-control cavity-wt" type="number" min="1" value="${maxWt}"></div>
+    <button type="button" class="cavity-del" onclick="this.parentElement.remove()" title="刪除此中空位">🗑️</button>
+  `;
+  list.appendChild(row);
+}
+function getCavityRowsData(){
+  const rows = document.querySelectorAll('#cavityList .cavity-row');
+  const cavities = [];
+  let id = 1;
+  rows.forEach(row=>{
+    const l = parseInt(row.querySelector('.cavity-l').value)||0;
+    const w = parseInt(row.querySelector('.cavity-w').value)||0;
+    const h = parseInt(row.querySelector('.cavity-h').value)||0;
+    const maxWt = parseInt(row.querySelector('.cavity-wt').value)||0;
+    if(l && w && h && maxWt) cavities.push({id: id++, l, w, h, maxWt});
+  });
+  return cavities;
+}
+function populateCavityRows(cavities){
+  const list = document.getElementById('cavityList');
+  list.innerHTML = '';
+  cavityCounter = 0;
+  (cavities||[]).forEach(c=> addCavityRow(c.l, c.w, c.h, c.maxWt));
+}
 
 // ===================== INIT =====================
 const DEFAULT_EQUIP_SORT = { field:'cat', dir:'asc' };
@@ -579,13 +846,14 @@ const DEFAULT_VEHICLE_SORT = { field:'l', dir:'asc' };
 
 function init() {
   const se = localStorage.getItem('equipDB'), sv = localStorage.getItem('vehicleDB');
-  equipDB = se ? JSON.parse(se) : JSON.parse(JSON.stringify(DEFAULT_EQUIP));
+  equipDB = migrateEquipCavities(se ? JSON.parse(se) : JSON.parse(JSON.stringify(DEFAULT_EQUIP)));
   vehicleDB = sv ? JSON.parse(sv) : JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
   applySortControlsFromStorage();
   sortEquipDB();
   sortVehicleDB();
   renderEquipSelect(); renderEquipTable(); renderVehicleTable();
   renderFixedVehicleSelect();
+  updateSyncStatus();
   document.getElementById('vehicleMode').addEventListener('change', function(){
     document.getElementById('fixedVehicleWrap').style.display = this.value==='fixed'?'block':'none';
   });
@@ -656,10 +924,12 @@ function applyVehicleSort(){
 function saveEquipDB(){
   sortEquipDB();
   localStorage.setItem('equipDB',JSON.stringify(equipDB));
+  autoSyncIfEnabled();
 }
 function saveVehicleDB(){
   sortVehicleDB();
   localStorage.setItem('vehicleDB',JSON.stringify(vehicleDB));
+  autoSyncIfEnabled();
 }
 
 // ===================== TABS =====================
@@ -861,13 +1131,13 @@ function expandItems(){
   shipmentItems.forEach(si=>{
     for(let i=0;i<si.qty;i++) items.push({...si,instanceId:`${si.code}_${i+1}`,displayName:`${si.name}`+(si.qty>1?` #${i+1}`:'')});
   });
-  // 先處理大平面占用物，再處理較小件，提升車板平面利用率
+  // 重量優先排序：較重物品先處理（放置於車尾），同重量再依平面面積排序
   items.sort((a,b)=>{
+    const wtDiff = b.wt - a.wt;  // 重量大的優先（先放車尾）
+    if(wtDiff) return wtDiff;
     const areaDiff = (b.l*b.w) - (a.l*a.w);
     if(areaDiff) return areaDiff;
-    const volDiff = (b.l*b.w*b.h) - (a.l*a.w*a.h);
-    if(volDiff) return volDiff;
-    return b.wt - a.wt;
+    return (b.l*b.w*b.h) - (a.l*a.w*a.h);
   });
   return items;
 }
@@ -894,16 +1164,20 @@ function createLoadedPlacement(item, pos, vehicle){
     overH: item.h>vehicle.h ? item.h-vehicle.h : 0,
     overL: (pos.x||0)+placementL>vehicle.l ? ((pos.x||0)+placementL)-vehicle.l : 0
   };
-  if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
-    placement.cavity = {
-      l: item.cavityL,
-      w: item.cavityW,
-      h: item.cavityH,
-      maxWt: item.cavityMaxWt,
+  const itemCavities = getEquipCavities(item);
+  if(itemCavities.length > 0){
+    placement.cavities = itemCavities.map(c=>({
+      id: c.id,
+      l: c.l,
+      w: c.w,
+      h: c.h,
+      maxWt: c.maxWt,
       usedLength: 0,
       usedWeight: 0,
       items: []
-    };
+    }));
+    // backward compat: keep .cavity pointing to first cavity
+    placement.cavity = placement.cavities[0];
   }
   return placement;
 }
@@ -917,16 +1191,18 @@ function getItemOrientations(item){
 function evaluateCavityPlacement(truck, item){
   let best = null;
   for(const host of truck.loadedItems){
-    if(host.inCavity || !host.cavity) continue;
-    const cavity = host.cavity;
-    const remainLen = cavity.l - cavity.usedLength;
-    const remainWt = cavity.maxWt - cavity.usedWeight;
-    for(const o of getItemOrientations(item)){
-      const fits = o.l <= remainLen && o.w <= cavity.w && item.h <= cavity.h && item.wt <= remainWt;
-      if(!fits) continue;
-      const score = (remainLen - o.l) + ((remainWt - item.wt) * 0.001) + host.x * 0.0001;
-      if(!best || score < best.score){
-        best = { host, cavity, l:o.l, w:o.w, rotated:o.rotated, score };
+    if(host.inCavity) continue;
+    const hostCavities = host.cavities || (host.cavity ? [host.cavity] : []);
+    for(const cavity of hostCavities){
+      const remainLen = cavity.l - cavity.usedLength;
+      const remainWt = cavity.maxWt - cavity.usedWeight;
+      for(const o of getItemOrientations(item)){
+        const fits = o.l <= remainLen && o.w <= cavity.w && item.h <= cavity.h && item.wt <= remainWt;
+        if(!fits) continue;
+        const score = (remainLen - o.l) + ((remainWt - item.wt) * 0.001) + host.x * 0.0001;
+        if(!best || score < best.score){
+          best = { host, cavity, cavityIdx: hostCavities.indexOf(cavity), l:o.l, w:o.w, rotated:o.rotated, score };
+        }
       }
     }
   }
@@ -954,8 +1230,10 @@ function placeInCavity(truck, item, candidate){
     overH: 0,
     overL: 0
   };
-  if(item.cavityEnabled && item.cavityL && item.cavityW && item.cavityH && item.cavityMaxWt){
-    placement.cavity = { l:item.cavityL, w:item.cavityW, h:item.cavityH, maxWt:item.cavityMaxWt, usedLength:0, usedWeight:0, items:[] };
+  const itemCavities = getEquipCavities(item);
+  if(itemCavities.length > 0){
+    placement.cavities = itemCavities.map(c=>({id:c.id, l:c.l, w:c.w, h:c.h, maxWt:c.maxWt, usedLength:0, usedWeight:0, items:[]}));
+    placement.cavity = placement.cavities[0];
   }
   cavity.items.push(placement.instanceId);
   cavity.usedLength += l + 50;
@@ -1014,7 +1292,7 @@ function evaluateFloorPlacement(truck, item, allowOversize=false){
       const wasteArea = (fr.l*fr.w) - (o.l*o.w);
       const longPenalty = (fr.l - o.l);
       const widePenalty = (fr.w - o.w);
-      const score = wasteArea + longPenalty*0.2 + widePenalty*0.2 + fr.x*0.01 + fr.y*0.01;
+      const score = wasteArea + longPenalty*0.2 + widePenalty*0.2 + (vehicle.l - fr.x - o.l)*0.05 + fr.y*0.01; // 偏好車尾(高X)放置重物
       if(!best || score < best.score){
         best = { idx, x:fr.x, y:fr.y, l:o.l, w:o.w, rotated:o.rotated, score, oversize:false };
       }
@@ -1210,7 +1488,7 @@ function renderResults(plan){
     </div>
   </div>
   <div class="flex-between mb-16 no-print">
-    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案；演算法已優先利用車板 <b>長度 + 寬度</b> 平面空間，再進行疊放。</div>
+    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案；演算法依 <b>重量由重到輕</b> 排序，重物先放車尾，再優先利用車板平面空間與多重中空位。</div>
     <div class="flex gap-8">
       <button class="btn btn-ghost" onclick="switchTab('shipment')">← 返回修改清單</button>
       <button class="btn btn-ghost" onclick="exportResultExcel()">📤 匯出 Excel</button>
@@ -1282,6 +1560,7 @@ function renderResults(plan){
                   <td>${li.item.l}×${li.item.w}×${li.item.h}${li.rotated?`<br><small style="color:var(--text-light)">已旋轉 90° 擺放</small>`:""}</td>
                   <td>${(li.item.wt/1000).toFixed(2)}t${(li.stackCount||1)>1?`<br><small>疊放 ${li.stackCount} 件 / 高 ${stackH}mm</small>`:''}</td>
                   <td>${li.inCavity ? `置入 ${li.cavityHostCode} 中空區` : `X ${(li.x/1000).toFixed(2)}m / Y ${(li.y/1000).toFixed(2)}m`}</td>
+                  <td><span style="font-weight:600;color:${li.item.wt>=5000?'var(--danger)':li.item.wt>=2000?'var(--warning)':'var(--text-light)'}">${(li.item.wt/1000).toFixed(2)}t</span></td>
                   <td>${li.inCavity?'<span class="badge badge-info">中空配置</span>':((li.stackCount||1)>1?`<span class="badge badge-warning">先平面後疊放 ×${li.stackCount}</span>`:'<span class="badge badge-success">平面配置</span>')}</td>
                   <td>${issues.length?issues.join(' '):'<span class="badge badge-success">正常</span>'}</td>
                 </tr>`;
@@ -1351,6 +1630,12 @@ function drawTopView(tidx, truck){
   ctx.fillStyle='#7eb8f7';
   ctx.font='10px sans-serif';
   ctx.fillText(`W:${v.w}mm`,offX+truckPxL+4,offY+truckPxW/2+4);
+  // 車尾標示
+  ctx.fillStyle='#f39c12';
+  ctx.font='bold 11px sans-serif';
+  ctx.textAlign='right';
+  ctx.fillText('車尾 ◀',offX+truckPxL-4,offY-6);
+  ctx.textAlign='left';
   ctx.fillText(`L:${v.l}mm`,offX+truckPxL/2-20,offY-6);
 
   topItems.forEach(li=>{
@@ -1369,21 +1654,26 @@ function drawTopView(tidx, truck){
     ctx.lineWidth=1.5;
     ctx.strokeRect(ix,iy,drawIW,drawIH);
 
-    if(li.cavity){
-      const cavX = ix + Math.max(2, ((li.item.l - li.cavity.l) * scale) / 2);
-      const cavY = iy + Math.max(2, ((li.w - li.cavity.w) * scale) / 2);
-      const cavW = Math.max(8, li.cavity.l * scale);
-      const cavH = Math.max(8, li.cavity.w * scale);
-      ctx.save();
-      ctx.setLineDash([5,3]);
-      ctx.strokeStyle='#ffffff';
-      ctx.lineWidth=1.5;
-      ctx.strokeRect(cavX, cavY, cavW, cavH);
-      ctx.setLineDash([]);
-      ctx.fillStyle='rgba(255,255,255,.8)';
-      ctx.font='bold 9px sans-serif';
-      ctx.fillText('中空區', cavX+4, cavY+11);
-      ctx.restore();
+    const liCavities = li.cavities || (li.cavity ? [li.cavity] : []);
+    if(liCavities.length){
+      let cavOffsetX = 0;
+      liCavities.forEach((cav, ci)=>{
+        const cavX = ix + Math.max(2, ((li.item.l - cav.l) / 2) * scale) + cavOffsetX;
+        const cavY = iy + Math.max(2, ((li.w - cav.w) * scale) / 2);
+        const cavW = Math.max(8, cav.l * scale);
+        const cavH = Math.max(8, cav.w * scale);
+        ctx.save();
+        ctx.setLineDash([5,3]);
+        ctx.strokeStyle='#ffffff';
+        ctx.lineWidth=1.5;
+        ctx.strokeRect(cavX, cavY, cavW, cavH);
+        ctx.setLineDash([]);
+        ctx.fillStyle='rgba(255,255,255,.8)';
+        ctx.font='bold 9px sans-serif';
+        ctx.fillText(liCavities.length>1?'中空#'+(ci+1):'中空區', cavX+4, cavY+11);
+        ctx.restore();
+        cavOffsetX += cavW + 4;
+      });
     }
 
     if(isOverL){
@@ -1484,12 +1774,17 @@ function drawSideView(tidx, truck){
     if(li.stackCount>1){
       for(let s=1;s<li.stackCount;s++){ const lineY=baseY-floorH-(li.item.h+s*li.item.stackDelta)*scale; ctx.save();ctx.setLineDash([3,2]);ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ix,lineY);ctx.lineTo(ix+drawIW,lineY);ctx.stroke();ctx.setLineDash([]);ctx.restore(); }
     }
-    if(li.cavity){
-      const cavW = Math.max(10, li.cavity.l*scale);
-      const cavH = Math.max(10, li.cavity.h*scale);
-      const cavX = ix + Math.max(2, ((li.item.l - li.cavity.l) * scale) / 2);
-      const cavY = iy + Math.max(2, ((stackedH - li.cavity.h) * scale) / 2);
-      ctx.save();ctx.setLineDash([5,3]);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(cavX,cavY,cavW,cavH);ctx.setLineDash([]);ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='bold 9px sans-serif';ctx.fillText('中空區', cavX+4, cavY+11);ctx.restore();
+    const liCavsSide = li.cavities || (li.cavity ? [li.cavity] : []);
+    if(liCavsSide.length){
+      let cavSideOff = 0;
+      liCavsSide.forEach((cav, ci)=>{
+        const cavW = Math.max(10, cav.l*scale);
+        const cavH = Math.max(10, cav.h*scale);
+        const cavX = ix + Math.max(2, ((li.item.l - cav.l) * scale) / 2) + cavSideOff;
+        const cavY = iy + Math.max(2, ((stackedH - cav.h) * scale) / 2);
+        ctx.save();ctx.setLineDash([5,3]);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(cavX,cavY,cavW,cavH);ctx.setLineDash([]);ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='bold 9px sans-serif';ctx.fillText(liCavsSide.length>1?'#'+(ci+1):'中空區', cavX+4, cavY+11);ctx.restore();
+        cavSideOff += cavW + 4;
+      });
     }
     if(isOverH){ const overPx=(stackedH-v.h)*scale; ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='#3498db';ctx.lineWidth=2;ctx.strokeRect(ix,limitY-overPx,drawIW,overPx);ctx.setLineDash([]);ctx.fillStyle='#3498db';ctx.font='bold 9px sans-serif';ctx.fillText(`超高+${stackedH-v.h}mm`,ix+2,limitY-overPx/2+3);ctx.restore(); }
     ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ix+drawIW+2,iy);ctx.lineTo(ix+drawIW+2,baseY-floorH);ctx.stroke();ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='9px sans-serif';ctx.fillText(`${stackedH}mm`,ix+drawIW+4,(iy+(baseY-floorH))/2+3);
@@ -1535,7 +1830,7 @@ function buildLegend(tidx, truck){
   const hasOverL=truck.loadedItems.some(li=>li.overL>0);
   const hasOverW=truck.loadedItems.some(li=>li.overW>0);
   const hasOverH=truck.loadedItems.some(li=>li.overH>0);
-  const hasCavity=truck.loadedItems.some(li=>li.cavity);
+  const hasCavity=truck.loadedItems.some(li=>(li.cavities&&li.cavities.length)||(li.cavity));
   const hasCavityItem=truck.loadedItems.some(li=>li.inCavity);
   if(hasOverL) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #f39c12;border-radius:2px"></div><span style="color:#e67e22;font-weight:700">超長區域</span></div>`;
   if(hasOverW) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #9b59b6;border-radius:2px"></div><span style="color:#8e44ad;font-weight:700">超寬區域</span></div>`;
@@ -1554,7 +1849,7 @@ function renderEquipTable(){
     <td>${e.l}</td><td>${e.w}</td><td>${e.h}</td><td>${e.wt.toLocaleString()}</td>
     <td>${e.stack?'<span class="badge badge-success">是</span>':'<span class="badge">否</span>'}</td>
     <td>${e.maxLayer}</td><td>${e.stackDelta}</td>
-    <td>${e.cavityEnabled?`<span class="badge badge-info">${e.cavityL||0}×${e.cavityW||0}×${e.cavityH||0}</span><br><small style="color:var(--text-light)">≤ ${(e.cavityMaxWt||0).toLocaleString()}kg</small>`:'<span class="badge">無</span>'}</td>
+    <td>${(()=>{const cavs=getEquipCavities(e);if(!cavs.length)return'<span class="badge">無</span>';return cavs.map((c,ci)=>'<span class="badge badge-info" style="margin:1px">'+('#'+(ci+1)+' ')+c.l+'×'+c.w+'×'+c.h+'</span><br><small style="color:var(--text-light)">≤ '+c.maxWt.toLocaleString()+'kg</small>').join('<br>')})()}</td>
     <td><div class="flex gap-8">
       <button class="btn btn-ghost btn-sm" onclick="openEquipModal(${i})">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteEquip(${i})">🗑️</button>
@@ -1565,17 +1860,15 @@ function renderEquipTable(){
 function openEquipModal(idx=-1){
   editEquipIdx=idx;
   document.getElementById('equipModalTitle').textContent=idx<0?'新增設備':'編輯設備';
-  const e=idx>=0?equipDB[idx]:{code:'',name:'',cat:'攪拌主機',l:'',w:'',h:'',wt:'',stack:false,maxLayer:2,stackDelta:500,cavityEnabled:false,cavityL:0,cavityW:0,cavityH:0,cavityMaxWt:0,note:''};
+  const e=idx>=0?equipDB[idx]:{code:'',name:'',cat:'攪拌主機',l:'',w:'',h:'',wt:'',stack:false,maxLayer:2,stackDelta:500,cavities:[],note:''};
   ['code','name','l','w','h','wt','note'].forEach(f=>document.getElementById('eq_'+f).value=e[f]||'');
   document.getElementById('eq_cat').value=e.cat||'攪拌主機';
   document.getElementById('eq_stack').value=e.stack?'1':'0';
   document.getElementById('eq_maxlayer').value=e.maxLayer||2;
   document.getElementById('eq_stackdelta').value=e.stackDelta||500;
-  document.getElementById('eq_cavity').value=e.cavityEnabled?'1':'0';
-  document.getElementById('eq_cavity_l').value=e.cavityL||0;
-  document.getElementById('eq_cavity_w').value=e.cavityW||0;
-  document.getElementById('eq_cavity_h').value=e.cavityH||0;
-  document.getElementById('eq_cavity_wt').value=e.cavityMaxWt||0;
+  const cavs = getEquipCavities(e);
+  document.getElementById('eq_cavity').value=cavs.length>0?'1':'0';
+  populateCavityRows(cavs);
   toggleStackFields();
   toggleCavityFields();
   document.getElementById('equipModal').classList.add('show');
@@ -1587,6 +1880,8 @@ function toggleCavityFields(){
   document.getElementById('cavityFields').style.display=document.getElementById('eq_cavity').value==='1'?'block':'none';
 }
 function saveEquip(){
+  const hasCavity = document.getElementById('eq_cavity').value==='1';
+  const cavities = hasCavity ? getCavityRowsData() : [];
   const e={
     code:document.getElementById('eq_code').value.trim(),
     name:document.getElementById('eq_name').value.trim(),
@@ -1598,21 +1893,17 @@ function saveEquip(){
     stack:document.getElementById('eq_stack').value==='1',
     maxLayer:parseInt(document.getElementById('eq_maxlayer').value)||1,
     stackDelta:parseInt(document.getElementById('eq_stackdelta').value)||0,
-    cavityEnabled:document.getElementById('eq_cavity').value==='1',
-    cavityL:parseInt(document.getElementById('eq_cavity_l').value)||0,
-    cavityW:parseInt(document.getElementById('eq_cavity_w').value)||0,
-    cavityH:parseInt(document.getElementById('eq_cavity_h').value)||0,
-    cavityMaxWt:parseInt(document.getElementById('eq_cavity_wt').value)||0,
+    cavities: cavities,
     note:document.getElementById('eq_note').value.trim()
   };
   if(!e.code||!e.name||!e.l||!e.w||!e.h||!e.wt){alert('請填寫完整資料！');return;}
-  if(e.cavityEnabled && (!e.cavityL||!e.cavityW||!e.cavityH||!e.cavityMaxWt)) { alert('若啟用中空區域，請完整填寫中空長/寬/高/容許重量。'); return; }
+  if(hasCavity && cavities.length===0){ alert('若啟用中空區域，請至少新增一個中空位並完整填寫長/寬/高/容許重量。'); return; }
   if(editEquipIdx<0) equipDB.push(e); else equipDB[editEquipIdx]=e;
   saveEquipDB(); renderEquipTable(); renderEquipSelect();
   closeModal('equipModal');
 }
 function deleteEquip(i){if(confirm(`確定要刪除「${equipDB[i].name}」？`)){equipDB.splice(i,1);saveEquipDB();renderEquipTable();renderEquipSelect();}}
-function resetEquipDB(){if(confirm('確定要重置為預設設備資料？')){equipDB=JSON.parse(JSON.stringify(DEFAULT_EQUIP));saveEquipDB();renderEquipTable();renderEquipSelect();}}
+function resetEquipDB(){if(confirm('確定要重置為預設設備資料？')){equipDB=migrateEquipCavities(JSON.parse(JSON.stringify(DEFAULT_EQUIP)));saveEquipDB();renderEquipTable();renderEquipSelect();}}
 
 // ===================== VEHICLE DB CRUD =====================
 function renderVehicleTable(){
@@ -1627,6 +1918,7 @@ function renderVehicleTable(){
     </div></td>
   </tr>`).join('');
   renderFixedVehicleSelect();
+  updateSyncStatus();
 }
 function renderFixedVehicleSelect(){
   document.getElementById('fixedVehicleSelect').innerHTML=vehicleDB.map(v=>`<option value="${v.code}">${v.name} (${(v.maxWt/1000).toFixed(0)}t / NT$ ${(v.cost||0).toLocaleString()})</option>`).join('');
@@ -1706,11 +1998,27 @@ function importEquipExcel(event){
         stack: parseBooleanValue(getRowValue(row,['stack','可疊放','是否可疊放'])),
         maxLayer: parseNumericValue(getRowValue(row,['maxlayer','最大疊放層數','最大層'])) || 1,
         stackDelta: parseNumericValue(getRowValue(row,['stackdelta','疊高增量','疊高增量(mm)'])) || 0,
-        cavityEnabled: parseBooleanValue(getRowValue(row,['cavityenabled','中空區域可裝小件','中空可用','cavity'])),
-        cavityL: parseNumericValue(getRowValue(row,['cavityl','中空長度','中空長(mm)'])) || 0,
-        cavityW: parseNumericValue(getRowValue(row,['cavityw','中空寬度','中空寬(mm)'])) || 0,
-        cavityH: parseNumericValue(getRowValue(row,['cavityh','中空高度','中空高(mm)'])) || 0,
-        cavityMaxWt: parseNumericValue(getRowValue(row,['cavitymaxwt','中空容許重量','中空容許重量(kg)'])) || 0,
+        cavities: (()=>{
+          // Support multi-cavity import: cavity1_l, cavity1_w... or legacy single cavity columns
+          const cavs = [];
+          for(let ci=1; ci<=5; ci++){
+            const cl = parseNumericValue(getRowValue(row,['cavity'+ci+'_l','中空'+ci+'長度','中空'+ci+'長(mm)']));
+            const cw = parseNumericValue(getRowValue(row,['cavity'+ci+'_w','中空'+ci+'寬度','中空'+ci+'寬(mm)']));
+            const ch = parseNumericValue(getRowValue(row,['cavity'+ci+'_h','中空'+ci+'高度','中空'+ci+'高(mm)']));
+            const cwt = parseNumericValue(getRowValue(row,['cavity'+ci+'_maxwt','中空'+ci+'容許重量','中空'+ci+'容許重量(kg)']));
+            if(cl && cw && ch && cwt) cavs.push({id:ci, l:cl, w:cw, h:ch, maxWt:cwt});
+          }
+          if(!cavs.length){
+            // fallback to legacy single cavity columns
+            const enabled = parseBooleanValue(getRowValue(row,['cavityenabled','中空區域可裝小件','中空可用','cavity']));
+            const cl = parseNumericValue(getRowValue(row,['cavityl','中空長度','中空長(mm)']));
+            const cw = parseNumericValue(getRowValue(row,['cavityw','中空寬度','中空寬(mm)']));
+            const ch = parseNumericValue(getRowValue(row,['cavityh','中空高度','中空高(mm)']));
+            const cwt = parseNumericValue(getRowValue(row,['cavitymaxwt','中空容許重量','中空容許重量(kg)']));
+            if(enabled && cl && cw && ch && cwt) cavs.push({id:1, l:cl, w:cw, h:ch, maxWt:cwt});
+          }
+          return cavs;
+        })(),
         note: (getRowValue(row,['note','備註']) || '').toString().trim()
       };
       if(!equip.l || !equip.w || !equip.h || !equip.wt){ skipped++; return; }
@@ -1777,7 +2085,7 @@ function downloadWorkbook(workbook, filename){
 }
 function exportEquipExcel(){
   const data = equipDB.map(e=>(
-    {設備代碼:e.code, 設備名稱:e.name, 類別:e.cat, 長度_mm:e.l, 寬度_mm:e.w, 高度_mm:e.h, 重量_kg:e.wt, 可疊放:e.stack?'是':'否', 最大疊放層數:e.maxLayer, 疊高增量_mm:e.stackDelta, 中空可用:e.cavityEnabled?'是':'否', 中空長度_mm:e.cavityL||0, 中空寬度_mm:e.cavityW||0, 中空高度_mm:e.cavityH||0, 中空容許重量_kg:e.cavityMaxWt||0, 備註:e.note||''}
+    {設備代碼:e.code, 設備名稱:e.name, 類別:e.cat, 長度_mm:e.l, 寬度_mm:e.w, 高度_mm:e.h, 重量_kg:e.wt, 可疊放:e.stack?'是':'否', 最大疊放層數:e.maxLayer, 疊高增量_mm:e.stackDelta, 中空數量:getEquipCavities(e).length, ...Object.fromEntries(getEquipCavities(e).flatMap((c,i)=>[['中空'+(i+1)+'長度_mm',c.l],['中空'+(i+1)+'寬度_mm',c.w],['中空'+(i+1)+'高度_mm',c.h],['中空'+(i+1)+'容許重量_kg',c.maxWt]])), 備註:e.note||''}
   ));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), '設備資料庫');
