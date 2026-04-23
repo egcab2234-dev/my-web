@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>混凝土預拌機械裝車疊貨自動評估系統 v5.0 — 雲端同步 / 多重中空位 / 重量排序</title>
+<title>混凝土預拌機械裝車疊貨自動評估系統 v6.0 — Firebase 即時同步 / 多重中空位 / 重量排序</title>
 <style>
 :root {
   --primary:#1a2b4a; --primary-light:#2d4a7a; --primary-lighter:#3d5f9a;
@@ -217,10 +217,10 @@ select.form-control{cursor:pointer}
     </div>
   </div>
   <div class="header-right">
-    <span class="sync-status unsynced" id="syncStatusBtn" onclick="openSyncModal()" title="雲端同步設定">☁️ 未連線</span>
+    <span class="sync-status unsynced" id="syncStatusBtn" onclick="openSyncModal()" title="Firebase 即時雲端資料庫">🔥 連線中...</span>
     <button class="btn btn-ghost" onclick="loadDemo()" style="color:#fff;border-color:rgba(255,255,255,.3)">📋 載入示範資料</button>
     <button class="btn btn-ghost" onclick="window.print()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
-    <span class="version-badge">v5.0</span>
+    <span class="version-badge">v6.0</span>
   </div>
 </div>
 
@@ -258,50 +258,52 @@ select.form-control{cursor:pointer}
 </div>
 
 
-<!-- SYNC MODAL -->
+<!-- FIREBASE STATUS MODAL -->
 <div class="modal-overlay" id="syncModal">
   <div class="modal sync-modal">
-    <div class="modal-header" style="background:linear-gradient(135deg,#2980b9,#3498db)">
-      <span style="font-size:22px">☁️</span>
+    <div class="modal-header" style="background:linear-gradient(135deg,#ff9800,#f57c00)">
+      <span style="font-size:22px">🔥</span>
       <div>
-        <h2>雲端同步設定 (GitHub Gist)</h2>
-        <p style="font-size:12px;opacity:.85;margin-top:2px">透過 GitHub Gist 跨裝置同步設備與車輛資料</p>
+        <h2>Firebase 即時雲端資料庫</h2>
+        <p style="font-size:12px;opacity:.85;margin-top:2px">所有裝置自動即時同步，無需任何設定</p>
       </div>
     </div>
     <div class="modal-body">
       <div class="sync-section">
-        <h3>🔑 GitHub 認證</h3>
-        <div class="form-group">
-          <label class="form-label">Personal Access Token</label>
-          <input class="form-control" id="sync_token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-          <small style="color:var(--text-light);font-size:11px">需要 <code>gist</code> scope 權限。前往 GitHub → Settings → Developer settings → Personal access tokens 建立。</small>
+        <h3>📡 連線狀態</h3>
+        <div id="fbStatusDisplay" style="display:flex;align-items:center;gap:12px;padding:14px;background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:10px">
+          <div id="fbStatusDot" style="width:14px;height:14px;border-radius:50%;background:#95a5a6"></div>
+          <div style="flex:1">
+            <div id="fbStatusText" style="font-weight:700;color:var(--primary)">初始化中...</div>
+            <div id="fbStatusDetail" style="font-size:11px;color:var(--text-light);margin-top:2px"></div>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Gist ID (選填，留空將自動建立新 Gist)</label>
-          <input class="form-control" id="sync_gist_id" placeholder="如：a1b2c3d4e5f6...">
-        </div>
-        <div class="form-group">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-            <input type="checkbox" id="sync_auto" style="width:16px;height:16px"> 儲存時自動同步到雲端
-          </label>
+        <div class="grid-2" style="gap:12px;margin-top:10px">
+          <div style="text-align:center;padding:12px;background:#e8f6ee;border-radius:8px">
+            <div style="font-size:24px;font-weight:900;color:#27ae60" id="fbEquipCount">-</div>
+            <div style="font-size:11px;color:var(--text-light)">雲端設備筆數</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#ebf5fb;border-radius:8px">
+            <div style="font-size:24px;font-weight:900;color:#2980b9" id="fbVehicleCount">-</div>
+            <div style="font-size:11px;color:var(--text-light)">雲端車輛筆數</div>
+          </div>
         </div>
       </div>
       <div class="sync-section">
-        <h3>⚡ 同步操作</h3>
+        <h3>🛠️ 進階操作</h3>
         <div class="sync-actions">
-          <button class="btn btn-primary" onclick="syncPushToGist()">⬆️ 上傳到雲端</button>
-          <button class="btn btn-accent" onclick="syncPullFromGist()">⬇️ 從雲端下載</button>
-          <button class="btn btn-ghost" onclick="testSyncConnection()">🔗 測試連線</button>
+          <button class="btn btn-ghost" onclick="fbForceReload()">🔄 強制從雲端重新載入</button>
+          <button class="btn btn-ghost" onclick="fbUploadAllLocal()">⬆️ 把本機全部資料上傳</button>
+          <button class="btn btn-danger btn-sm" onclick="fbClearCloudData()">🗑️ 清空雲端資料 (慎用)</button>
         </div>
         <div class="sync-log" id="syncLog">等待操作...</div>
       </div>
-      <div class="tooltip-warn">
-        ⚠️ Token 僅儲存於瀏覽器 localStorage，不會傳送到任何第三方伺服器。建議使用「Fine-grained token」並限制僅 Gist 權限。
+      <div class="tooltip-warn" style="background:#e3f2fd;border-color:#2196f3;color:#0d47a1">
+        💡 <b>自動同步機制</b>：任何裝置新增/修改/刪除設備或車輛，其他裝置會在 1 秒內自動更新，無需手動操作。斷網時仍可編輯，恢復連線後自動合併。
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('syncModal')">關閉</button>
-      <button class="btn btn-primary" onclick="saveSyncConfig()">💾 儲存設定</button>
+      <button class="btn btn-primary" onclick="closeModal('syncModal')">關閉</button>
     </div>
   </div>
 </div>
@@ -596,6 +598,35 @@ select.form-control{cursor:pointer}
   </div>
 </div>
 
+<script type="module">
+// Firebase SDK 初始化（使用 ES module）
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getDatabase, ref, set, update, remove, onValue, get, child,
+  goOnline, goOffline, onDisconnect, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAGjtJTnqrtiixm-aHc7LaVsbeI208JyVg",
+  authDomain: "automatic-stacking.firebaseapp.com",
+  databaseURL: "https://automatic-stacking-default-rtdb.firebaseio.com",
+  projectId: "automatic-stacking",
+  storageBucket: "automatic-stacking.firebasestorage.app",
+  messagingSenderId: "677433189988",
+  appId: "1:677433189988:web:dc3df711bdb852a410a171"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// 將 Firebase API 暴露到全域 window 供一般 script 使用
+window.firebaseAPI = {
+  db, ref, set, update, remove, onValue, get, child,
+  goOnline, goOffline, onDisconnect, serverTimestamp
+};
+window.dispatchEvent(new CustomEvent('firebaseReady'));
+console.log('[Firebase] SDK 已初始化', firebaseConfig.projectId);
+</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -638,143 +669,272 @@ const DEFAULT_VEHICLES = [
 ];
 
 
-// ===================== CLOUD SYNC (GitHub Gist) =====================
-function loadSyncConfig(){
-  try{
-    return JSON.parse(localStorage.getItem('syncConfig')||'null') || {token:'',gistId:'',auto:false};
-  }catch(e){ return {token:'',gistId:'',auto:false}; }
-}
-function saveSyncConfig(){
-  const config = {
-    token: document.getElementById('sync_token').value.trim(),
-    gistId: document.getElementById('sync_gist_id').value.trim(),
-    auto: document.getElementById('sync_auto').checked
-  };
-  localStorage.setItem('syncConfig', JSON.stringify(config));
-  updateSyncStatus();
-  syncLog('✅ 設定已儲存','ok');
-}
-function openSyncModal(){
-  const cfg = loadSyncConfig();
-  document.getElementById('sync_token').value = cfg.token||'';
-  document.getElementById('sync_gist_id').value = cfg.gistId||'';
-  document.getElementById('sync_auto').checked = !!cfg.auto;
-  document.getElementById('syncModal').classList.add('show');
-}
-function updateSyncStatus(){
-  const btn = document.getElementById('syncStatusBtn');
-  const cfg = loadSyncConfig();
-  if(cfg.token && cfg.gistId){
-    btn.className='sync-status synced'; btn.innerHTML='☁️ 已連線';
-  } else if(cfg.token){
-    btn.className='sync-status synced'; btn.innerHTML='☁️ 待同步';
-  } else {
-    btn.className='sync-status unsynced'; btn.innerHTML='☁️ 未連線';
-  }
-}
+// ===================== FIREBASE REALTIME DATABASE =====================
+let fbReady = false;
+let fbOnline = false;
+let fbUnsubscribeEquip = null;
+let fbUnsubscribeVehicle = null;
+let fbSuppressLocalPush = false; // 避免從雲端拉下來後又推回去造成迴圈
+let fbPendingLocalChanges = { equip: new Set(), vehicle: new Set() };
+
 function syncLog(msg, type=''){
   const log = document.getElementById('syncLog');
+  if(!log) return;
   const cls = type==='ok'?'log-ok':type==='err'?'log-err':type==='warn'?'log-warn':'';
   log.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
   log.scrollTop = log.scrollHeight;
 }
-async function testSyncConnection(){
-  const cfg = loadSyncConfig();
-  if(!cfg.token){ syncLog('❌ 請先填入 GitHub Token','err'); return; }
-  syncLog('🔗 測試 GitHub API 連線中...');
-  try{
-    const resp = await fetch('https://api.github.com/user', {headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json'}});
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const user = await resp.json();
-    syncLog(`✅ 連線成功！GitHub 使用者：${user.login}`,'ok');
-  }catch(e){
-    syncLog('❌ 連線失敗：'+e.message,'err');
+
+function openSyncModal(){
+  document.getElementById('syncModal').classList.add('show');
+  updateFbStatusPanel();
+}
+
+function updateSyncStatus(){
+  // legacy alias, redirect to Firebase status
+  updateFbStatusBadge();
+}
+
+function updateFbStatusBadge(){
+  const btn = document.getElementById('syncStatusBtn');
+  if(!btn) return;
+  if(!fbReady){
+    btn.className='sync-status syncing';
+    btn.innerHTML='🔥 初始化中...';
+  } else if(fbOnline){
+    btn.className='sync-status synced';
+    btn.innerHTML='🔥 即時同步中';
+  } else {
+    btn.className='sync-status unsynced';
+    btn.innerHTML='🔥 離線模式';
   }
 }
-async function syncPushToGist(){
-  const cfg = loadSyncConfig();
-  if(!cfg.token){ syncLog('❌ 請先設定 GitHub Token','err'); return; }
-  const btn = document.getElementById('syncStatusBtn');
-  btn.className='sync-status syncing'; btn.innerHTML='☁️ 同步中...';
-  syncLog('⬆️ 上傳資料到 GitHub Gist...');
-  const payload = {
-    description: '混凝土裝車系統 - 設備與車輛資料同步 (自動產生)',
-    public: false,
-    files: {
-      'truck_loader_equipDB.json': { content: JSON.stringify(equipDB, null, 2) },
-      'truck_loader_vehicleDB.json': { content: JSON.stringify(vehicleDB, null, 2) },
-      'truck_loader_meta.json': { content: JSON.stringify({updatedAt:new Date().toISOString(),equipCount:equipDB.length,vehicleCount:vehicleDB.length},null,2) }
-    }
-  };
-  try{
-    let url, method;
-    if(cfg.gistId){
-      url = 'https://api.github.com/gists/'+cfg.gistId;
-      method = 'PATCH';
-    } else {
-      url = 'https://api.github.com/gists';
-      method = 'POST';
-    }
-    const resp = await fetch(url, {
-      method,
-      headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if(!resp.ok) throw new Error('HTTP '+resp.status+' '+await resp.text());
-    const gist = await resp.json();
-    if(!cfg.gistId){
-      cfg.gistId = gist.id;
-      document.getElementById('sync_gist_id').value = gist.id;
-      localStorage.setItem('syncConfig', JSON.stringify(cfg));
-    }
-    syncLog(`✅ 上傳成功！Gist ID：${gist.id}，設備 ${equipDB.length} 筆，車輛 ${vehicleDB.length} 筆`,'ok');
-    updateSyncStatus();
-  }catch(e){
-    syncLog('❌ 上傳失敗：'+e.message,'err');
-    updateSyncStatus();
+
+function updateFbStatusPanel(){
+  const dot = document.getElementById('fbStatusDot');
+  const text = document.getElementById('fbStatusText');
+  const detail = document.getElementById('fbStatusDetail');
+  const eCount = document.getElementById('fbEquipCount');
+  const vCount = document.getElementById('fbVehicleCount');
+  if(!dot) return;
+  if(!fbReady){
+    dot.style.background='#95a5a6';
+    text.textContent='Firebase SDK 載入中...';
+    detail.textContent='請稍候，正在連線雲端資料庫';
+  } else if(fbOnline){
+    dot.style.background='#27ae60';
+    dot.style.boxShadow='0 0 8px #27ae60';
+    text.textContent='✅ 已連線 Firebase 即時資料庫';
+    detail.textContent='專案：automatic-stacking｜所有修改即時同步至其他裝置';
+  } else {
+    dot.style.background='#e74c3c';
+    text.textContent='⚠️ 離線模式';
+    detail.textContent='使用本機快取資料，恢復連線後自動同步';
   }
+  if(eCount) eCount.textContent = equipDB.length;
+  if(vCount) vCount.textContent = vehicleDB.length;
 }
-async function syncPullFromGist(){
-  const cfg = loadSyncConfig();
-  if(!cfg.token||!cfg.gistId){ syncLog('❌ 請先設定 Token 和 Gist ID','err'); return; }
-  const btn = document.getElementById('syncStatusBtn');
-  btn.className='sync-status syncing'; btn.innerHTML='☁️ 同步中...';
-  syncLog('⬇️ 從 GitHub Gist 下載資料...');
-  try{
-    const resp = await fetch('https://api.github.com/gists/'+cfg.gistId, {
-      headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json'}
-    });
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const gist = await resp.json();
-    const equipFile = gist.files['truck_loader_equipDB.json'];
-    const vehicleFile = gist.files['truck_loader_vehicleDB.json'];
-    const metaFile = gist.files['truck_loader_meta.json'];
-    if(!equipFile||!vehicleFile) throw new Error('Gist 中找不到設備/車輛資料檔案');
-    const newEquip = JSON.parse(equipFile.content);
-    const newVehicle = JSON.parse(vehicleFile.content);
-    const meta = metaFile ? JSON.parse(metaFile.content) : {};
-    if(!confirm(`確定要從雲端下載並覆蓋本機資料？\n\n雲端資料：\n• 設備 ${newEquip.length} 筆\n• 車輛 ${newVehicle.length} 筆\n• 更新時間：${meta.updatedAt||'未知'}\n\n⚠️ 本機資料將被覆蓋！`)){
-      syncLog('⚠️ 使用者取消下載','warn');
-      updateSyncStatus();
+
+async function fbInit(){
+  if(!window.firebaseAPI){
+    syncLog('⚠️ Firebase SDK 尚未載入，等待中...','warn');
+    return false;
+  }
+  const api = window.firebaseAPI;
+  fbReady = true;
+  syncLog('✅ Firebase SDK 已就緒','ok');
+
+  // 監聽連線狀態
+  const connectedRef = api.ref(api.db, '.info/connected');
+  api.onValue(connectedRef, (snap)=>{
+    fbOnline = !!snap.val();
+    updateFbStatusBadge();
+    updateFbStatusPanel();
+    syncLog(fbOnline ? '🌐 已連上雲端' : '📴 離線 (使用本機快取)', fbOnline?'ok':'warn');
+  });
+
+  // 訂閱 equipDB
+  const equipRef = api.ref(api.db, 'equipDB');
+  fbUnsubscribeEquip = api.onValue(equipRef, (snap)=>{
+    if(fbSuppressLocalPush) return;
+    const val = snap.val();
+    const newDB = val ? Object.values(val).filter(x=>x && x.code) : [];
+    if(newDB.length === 0 && equipDB.length > 0){
+      // 雲端沒資料，但本機有：上傳本機資料作為初始化
+      syncLog('☁️ 雲端無設備資料，上傳本機預設資料...','warn');
+      fbUploadAllLocal();
       return;
     }
-    equipDB = migrateEquipCavities(newEquip);
-    vehicleDB = newVehicle;
-    saveEquipDB(); saveVehicleDB();
-    renderEquipTable(); renderEquipSelect(); renderVehicleTable();
-    syncLog(`✅ 下載成功！設備 ${equipDB.length} 筆，車輛 ${vehicleDB.length} 筆`,'ok');
-    updateSyncStatus();
+    equipDB = migrateEquipCavities(newDB);
+    localStorage.setItem('equipDB', JSON.stringify(equipDB)); // 本機快取
+    sortEquipDB();
+    renderEquipTable();
+    renderEquipSelect();
+    updateFbStatusPanel();
+    console.log('[Firebase] equipDB 已更新，', equipDB.length, '筆');
+  }, (err)=>{
+    syncLog('❌ equipDB 監聽錯誤：'+err.message,'err');
+  });
+
+  // 訂閱 vehicleDB
+  const vehicleRef = api.ref(api.db, 'vehicleDB');
+  fbUnsubscribeVehicle = api.onValue(vehicleRef, (snap)=>{
+    if(fbSuppressLocalPush) return;
+    const val = snap.val();
+    const newDB = val ? Object.values(val).filter(x=>x && x.code) : [];
+    if(newDB.length === 0 && vehicleDB.length > 0){
+      syncLog('☁️ 雲端無車輛資料，上傳本機預設資料...','warn');
+      fbUploadAllLocal();
+      return;
+    }
+    vehicleDB = newDB;
+    localStorage.setItem('vehicleDB', JSON.stringify(vehicleDB));
+    sortVehicleDB();
+    renderVehicleTable();
+    renderFixedVehicleSelect();
+    updateFbStatusPanel();
+    console.log('[Firebase] vehicleDB 已更新，', vehicleDB.length, '筆');
+  }, (err)=>{
+    syncLog('❌ vehicleDB 監聽錯誤：'+err.message,'err');
+  });
+
+  return true;
+}
+
+// 單筆設備上傳
+async function fbPushEquip(equip){
+  if(!fbReady || !window.firebaseAPI) return false;
+  try{
+    const api = window.firebaseAPI;
+    const safeKey = sanitizeFbKey(equip.code);
+    await api.set(api.ref(api.db, 'equipDB/'+safeKey), {...equip, _updatedAt: Date.now()});
+    return true;
   }catch(e){
-    syncLog('❌ 下載失敗：'+e.message,'err');
-    updateSyncStatus();
+    console.error('fbPushEquip failed', e);
+    syncLog('❌ 設備上傳失敗: '+e.message,'err');
+    return false;
   }
 }
-async function autoSyncIfEnabled(){
-  const cfg = loadSyncConfig();
-  if(cfg.auto && cfg.token && cfg.gistId){
-    try{ await syncPushToGist(); }catch(e){ console.warn('Auto sync failed',e); }
+
+// 單筆設備刪除
+async function fbRemoveEquip(code){
+  if(!fbReady || !window.firebaseAPI) return false;
+  try{
+    const api = window.firebaseAPI;
+    const safeKey = sanitizeFbKey(code);
+    await api.remove(api.ref(api.db, 'equipDB/'+safeKey));
+    return true;
+  }catch(e){
+    console.error('fbRemoveEquip failed', e);
+    return false;
   }
 }
+
+// 單筆車輛上傳
+async function fbPushVehicle(vehicle){
+  if(!fbReady || !window.firebaseAPI) return false;
+  try{
+    const api = window.firebaseAPI;
+    const safeKey = sanitizeFbKey(vehicle.code);
+    await api.set(api.ref(api.db, 'vehicleDB/'+safeKey), {...vehicle, _updatedAt: Date.now()});
+    return true;
+  }catch(e){
+    console.error('fbPushVehicle failed', e);
+    syncLog('❌ 車輛上傳失敗: '+e.message,'err');
+    return false;
+  }
+}
+
+// 單筆車輛刪除
+async function fbRemoveVehicle(code){
+  if(!fbReady || !window.firebaseAPI) return false;
+  try{
+    const api = window.firebaseAPI;
+    const safeKey = sanitizeFbKey(code);
+    await api.remove(api.ref(api.db, 'vehicleDB/'+safeKey));
+    return true;
+  }catch(e){
+    console.error('fbRemoveVehicle failed', e);
+    return false;
+  }
+}
+
+// Firebase key 不允許 . $ # [ ] /
+function sanitizeFbKey(code){
+  return (code||'').toString().replace(/[.#$\[\]\/]/g, '_');
+}
+
+// 強制從雲端重載
+async function fbForceReload(){
+  if(!fbReady){ syncLog('⚠️ Firebase 尚未準備好','warn'); return; }
+  syncLog('🔄 從雲端強制重新載入...');
+  try{
+    const api = window.firebaseAPI;
+    const [eSnap, vSnap] = await Promise.all([
+      api.get(api.ref(api.db, 'equipDB')),
+      api.get(api.ref(api.db, 'vehicleDB'))
+    ]);
+    const eVal = eSnap.val(), vVal = vSnap.val();
+    equipDB = migrateEquipCavities(eVal ? Object.values(eVal).filter(x=>x && x.code) : []);
+    vehicleDB = vVal ? Object.values(vVal).filter(x=>x && x.code) : [];
+    localStorage.setItem('equipDB', JSON.stringify(equipDB));
+    localStorage.setItem('vehicleDB', JSON.stringify(vehicleDB));
+    sortEquipDB(); sortVehicleDB();
+    renderEquipTable(); renderEquipSelect(); renderVehicleTable(); renderFixedVehicleSelect();
+    syncLog(`✅ 重載完成：設備 ${equipDB.length} 筆、車輛 ${vehicleDB.length} 筆`,'ok');
+    updateFbStatusPanel();
+  }catch(e){
+    syncLog('❌ 重載失敗: '+e.message,'err');
+  }
+}
+
+// 把本機全部資料上傳（通常用於初始化或修復）
+async function fbUploadAllLocal(){
+  if(!fbReady){ syncLog('⚠️ Firebase 尚未準備好','warn'); return; }
+  if(!confirm(`將本機 ${equipDB.length} 筆設備、${vehicleDB.length} 筆車輛全數上傳至雲端？
+（會覆蓋雲端同 code 的項目）`)) return;
+  syncLog('⬆️ 批次上傳本機資料...');
+  fbSuppressLocalPush = true;
+  try{
+    const api = window.firebaseAPI;
+    const equipPayload = {};
+    equipDB.forEach(e=>{ equipPayload[sanitizeFbKey(e.code)] = {...e, _updatedAt: Date.now()}; });
+    const vehiclePayload = {};
+    vehicleDB.forEach(v=>{ vehiclePayload[sanitizeFbKey(v.code)] = {...v, _updatedAt: Date.now()}; });
+    await api.set(api.ref(api.db, 'equipDB'), equipPayload);
+    await api.set(api.ref(api.db, 'vehicleDB'), vehiclePayload);
+    syncLog(`✅ 上傳完成：設備 ${equipDB.length} 筆、車輛 ${vehicleDB.length} 筆`,'ok');
+  }catch(e){
+    syncLog('❌ 上傳失敗: '+e.message,'err');
+  }finally{
+    fbSuppressLocalPush = false;
+    updateFbStatusPanel();
+  }
+}
+
+// 清空雲端資料（慎用）
+async function fbClearCloudData(){
+  if(!fbReady){ syncLog('⚠️ Firebase 尚未準備好','warn'); return; }
+  if(!confirm('⚠️ 確定要清空雲端所有設備與車輛資料嗎？此操作無法復原！')) return;
+  if(!confirm('⚠️⚠️ 再次確認：所有裝置的資料都會被清空，確定執行？')) return;
+  syncLog('🗑️ 清空雲端資料中...','warn');
+  try{
+    const api = window.firebaseAPI;
+    await api.remove(api.ref(api.db, 'equipDB'));
+    await api.remove(api.ref(api.db, 'vehicleDB'));
+    syncLog('✅ 雲端資料已清空','ok');
+  }catch(e){
+    syncLog('❌ 清空失敗: '+e.message,'err');
+  }
+}
+
+// 舊版 auto sync 函式改為 no-op（保留以免呼叫點報錯）
+async function autoSyncIfEnabled(){ /* Firebase 已自動同步，無需手動觸發 */ }
+
+// 等待 Firebase 就緒事件
+window.addEventListener('firebaseReady', ()=>{
+  setTimeout(fbInit, 100); // 稍微延遲確保 init() 已執行
+});
 
 let equipDB = [], vehicleDB = [], shipmentItems = [], editEquipIdx = -1, editVehicleIdx = -1;
 let oversizeCallback = null;
@@ -1898,12 +2058,40 @@ function saveEquip(){
   };
   if(!e.code||!e.name||!e.l||!e.w||!e.h||!e.wt){alert('請填寫完整資料！');return;}
   if(hasCavity && cavities.length===0){ alert('若啟用中空區域，請至少新增一個中空位並完整填寫長/寬/高/容許重量。'); return; }
+  // 本機先更新
   if(editEquipIdx<0) equipDB.push(e); else equipDB[editEquipIdx]=e;
   saveEquipDB(); renderEquipTable(); renderEquipSelect();
   closeModal('equipModal');
+  // 再推送到 Firebase（單筆）
+  fbPushEquip(e).then(ok=>{
+    if(ok) console.log('[Firebase] 設備已同步:', e.code);
+  });
 }
-function deleteEquip(i){if(confirm(`確定要刪除「${equipDB[i].name}」？`)){equipDB.splice(i,1);saveEquipDB();renderEquipTable();renderEquipSelect();}}
-function resetEquipDB(){if(confirm('確定要重置為預設設備資料？')){equipDB=migrateEquipCavities(JSON.parse(JSON.stringify(DEFAULT_EQUIP)));saveEquipDB();renderEquipTable();renderEquipSelect();}}
+function deleteEquip(i){
+  if(!confirm(`確定要刪除「${equipDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
+  const removedCode = equipDB[i].code;
+  equipDB.splice(i,1);
+  saveEquipDB(); renderEquipTable(); renderEquipSelect();
+  fbRemoveEquip(removedCode).then(ok=>{
+    if(ok) console.log('[Firebase] 已刪除設備:', removedCode);
+  });
+}
+function resetEquipDB(){
+  if(!confirm('確定要重置為預設設備資料？\n（此操作將同步覆蓋雲端資料）')) return;
+  equipDB = migrateEquipCavities(JSON.parse(JSON.stringify(DEFAULT_EQUIP)));
+  saveEquipDB(); renderEquipTable(); renderEquipSelect();
+  // 批次上傳到 Firebase
+  if(fbReady && window.firebaseAPI){
+    const api = window.firebaseAPI;
+    const payload = {};
+    equipDB.forEach(e=>{ payload[sanitizeFbKey(e.code)] = {...e, _updatedAt: Date.now()}; });
+    fbSuppressLocalPush = true;
+    api.set(api.ref(api.db, 'equipDB'), payload).then(()=>{
+      fbSuppressLocalPush = false;
+      console.log('[Firebase] 設備資料庫已重置並同步');
+    }).catch(err=>{ fbSuppressLocalPush = false; console.error(err); });
+  }
+}
 
 // ===================== VEHICLE DB CRUD =====================
 function renderVehicleTable(){
@@ -1947,6 +2135,9 @@ function saveVehicle(){
   if(editVehicleIdx<0) vehicleDB.push(v); else vehicleDB[editVehicleIdx]=v;
   saveVehicleDB(); renderVehicleTable();
   closeModal('vehicleModal');
+  fbPushVehicle(v).then(ok=>{
+    if(ok) console.log('[Firebase] 車輛已同步:', v.code);
+  });
 }
 
 function parseNumericValue(v){
@@ -2028,7 +2219,18 @@ function importEquipExcel(event){
     });
     saveEquipDB(); renderEquipTable(); renderEquipSelect();
     event.target.value = '';
-    alert(`✅ 設備匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：設備代碼/設備名稱/類別/長度/寬度/高度/重量/可疊放/最大疊放層數/疊高增量/中空區域可裝小件/中空長度/中空寬度/中空高度/中空容許重量/備註`);
+    // 批次上傳到 Firebase
+    if(fbReady && window.firebaseAPI){
+      const api = window.firebaseAPI;
+      const payload = {};
+      equipDB.forEach(e=>{ payload[sanitizeFbKey(e.code)] = {...e, _updatedAt: Date.now()}; });
+      fbSuppressLocalPush = true;
+      api.set(api.ref(api.db, 'equipDB'), payload).then(()=>{
+        fbSuppressLocalPush = false;
+        console.log('[Firebase] 匯入結果已同步');
+      }).catch(err=>{ fbSuppressLocalPush = false; console.error(err); });
+    }
+    alert(`✅ 設備匯入完成（已同步雲端）\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：設備代碼/設備名稱/類別/長度/寬度/高度/重量/可疊放/最大疊放層數/疊高增量/中空1長度/中空1寬度/中空1高度/中空1容許重量（支援 cavity1~cavity5 多組）/備註`);
   });
 }
 function importVehicleExcel(event){
@@ -2058,11 +2260,44 @@ function importVehicleExcel(event){
     });
     saveVehicleDB(); renderVehicleTable();
     event.target.value = '';
-    alert(`✅ 車輛匯入完成\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：車輛代碼/車型名稱/載貨長/載貨寬/高度限制/最大載重/底板離地高/運輸費用/適用說明`);
+    // 批次上傳到 Firebase
+    if(fbReady && window.firebaseAPI){
+      const api = window.firebaseAPI;
+      const payload = {};
+      vehicleDB.forEach(v=>{ payload[sanitizeFbKey(v.code)] = {...v, _updatedAt: Date.now()}; });
+      fbSuppressLocalPush = true;
+      api.set(api.ref(api.db, 'vehicleDB'), payload).then(()=>{
+        fbSuppressLocalPush = false;
+        console.log('[Firebase] 匯入車輛結果已同步');
+      }).catch(err=>{ fbSuppressLocalPush = false; console.error(err); });
+    }
+    alert(`✅ 車輛匯入完成（已同步雲端）\n新增：${inserted} 筆\n更新：${updated} 筆\n略過：${skipped} 筆\n\n欄位可用別名：車輛代碼/車型名稱/載貨長/載貨寬/高度限制/最大載重/底板離地高/運輸費用/適用說明`);
   });
 }
-function deleteVehicle(i){if(confirm(`確定要刪除「${vehicleDB[i].name}」？`)){vehicleDB.splice(i,1);saveVehicleDB();renderVehicleTable();}}
-function resetVehicleDB(){if(confirm('確定要重置為預設車輛資料？')){vehicleDB=JSON.parse(JSON.stringify(DEFAULT_VEHICLES));saveVehicleDB();renderVehicleTable();}}
+function deleteVehicle(i){
+  if(!confirm(`確定要刪除「${vehicleDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
+  const removedCode = vehicleDB[i].code;
+  vehicleDB.splice(i,1);
+  saveVehicleDB(); renderVehicleTable();
+  fbRemoveVehicle(removedCode).then(ok=>{
+    if(ok) console.log('[Firebase] 已刪除車輛:', removedCode);
+  });
+}
+function resetVehicleDB(){
+  if(!confirm('確定要重置為預設車輛資料？\n（此操作將同步覆蓋雲端資料）')) return;
+  vehicleDB = JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
+  saveVehicleDB(); renderVehicleTable();
+  if(fbReady && window.firebaseAPI){
+    const api = window.firebaseAPI;
+    const payload = {};
+    vehicleDB.forEach(v=>{ payload[sanitizeFbKey(v.code)] = {...v, _updatedAt: Date.now()}; });
+    fbSuppressLocalPush = true;
+    api.set(api.ref(api.db, 'vehicleDB'), payload).then(()=>{
+      fbSuppressLocalPush = false;
+      console.log('[Firebase] 車輛資料庫已重置並同步');
+    }).catch(err=>{ fbSuppressLocalPush = false; console.error(err); });
+  }
+}
 
 // ===================== UTILS =====================
 function closeModal(id){document.getElementById(id).classList.remove('show');}
