@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>混凝土預拌機械裝車疊貨自動評估系統 v6.0 — Firebase 即時同步 / 多重中空位 / 重量排序</title>
+<title>混凝土預拌機械裝車疊貨自動評估系統 v7.0 — 管理員權限 / Firebase 即時同步 / 多重中空位 / 重量排序</title>
 <style>
 :root {
   --primary:#1a2b4a; --primary-light:#2d4a7a; --primary-lighter:#3d5f9a;
@@ -182,6 +182,19 @@ select.form-control{cursor:pointer}
 ::-webkit-scrollbar-thumb{background:#c0c8d8;border-radius:3px}
 .category-header{padding:8px 14px;background:#f0f3f8;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e4e8f0}
 
+
+/* ADMIN MODE */
+.admin-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:.2s;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff}
+.admin-badge.locked{background:rgba(149,165,166,.25);border-color:rgba(149,165,166,.5)}
+.admin-badge.unlocked{background:rgba(46,204,113,.3);border-color:rgba(46,204,113,.6);color:#fff;box-shadow:0 0 8px rgba(46,204,113,.4)}
+.admin-only{display:none !important}
+body.admin-mode .admin-only{display:inline-flex !important}
+body.admin-mode .admin-only.tr-row{display:table-row !important}
+body.admin-mode .admin-only.block{display:block !important}
+.admin-locked-tip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#fff8dc;border:1px dashed #f39c12;border-radius:8px;font-size:12px;color:#856404}
+body.admin-mode .admin-locked-tip{display:none}
+.admin-modal .admin-input{font-size:24px;text-align:center;letter-spacing:8px;font-weight:700;padding:16px}
+
 /* SYNC PANEL */
 .sync-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:.2s}
 .sync-status.synced{background:rgba(39,174,96,.2);color:#2ecc71;border:1px solid rgba(39,174,96,.3)}
@@ -217,10 +230,10 @@ select.form-control{cursor:pointer}
     </div>
   </div>
   <div class="header-right">
+    <span class="admin-badge locked" id="adminBadge" onclick="openAdminModal()" title="管理員權限">🔒 一般模式</span>
     <span class="sync-status unsynced" id="syncStatusBtn" onclick="openSyncModal()" title="Firebase 即時雲端資料庫">🔥 連線中...</span>
-    <button class="btn btn-ghost" onclick="loadDemo()" style="color:#fff;border-color:rgba(255,255,255,.3)">📋 載入示範資料</button>
     <button class="btn btn-ghost" onclick="window.print()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
-    <span class="version-badge">v6.0</span>
+    <span class="version-badge">v7.0</span>
   </div>
 </div>
 
@@ -258,6 +271,40 @@ select.form-control{cursor:pointer}
 </div>
 
 
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal admin-modal" style="max-width:420px">
+    <div class="modal-header" id="adminModalHeader" style="background:linear-gradient(135deg,#2c3e50,#34495e)">
+      <span style="font-size:22px">🔐</span>
+      <div>
+        <h2 id="adminModalTitle">管理員登入</h2>
+        <p style="font-size:12px;opacity:.85;margin-top:2px" id="adminModalSubtitle">請輸入管理員密碼以解鎖編輯功能</p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="adminLoginPanel">
+        <div class="form-group">
+          <label class="form-label">管理員密碼</label>
+          <input class="form-control admin-input" id="adminPasswordInput" type="password" maxlength="10" autocomplete="off" onkeydown="if(event.key===&quot;Enter&quot;)tryAdminLogin()">
+        </div>
+        <div id="adminLoginError" style="color:var(--danger);font-size:12px;text-align:center;min-height:18px;margin-top:8px"></div>
+        <div class="tooltip-warn" style="margin-top:14px">💡 一般模式僅能瀏覽與計算裝車方案；登入後才能新增、修改、刪除、匯入設備與車輛資料。</div>
+      </div>
+      <div id="adminLogoutPanel" style="display:none;text-align:center;padding:20px 0">
+        <div style="font-size:48px">✅</div>
+        <div style="font-size:16px;font-weight:700;color:var(--success);margin-top:10px">已登入管理員模式</div>
+        <div style="font-size:12px;color:var(--text-light);margin-top:6px">您現在可以編輯設備、車輛與雲端資料</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('adminModal')">關閉</button>
+      <button class="btn btn-primary" id="adminLoginBtn" onclick="tryAdminLogin()">🔓 登入</button>
+      <button class="btn btn-danger" id="adminLogoutBtn" onclick="adminLogout()" style="display:none">🚪 登出</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIREBASE STATUS MODAL -->
 <div class="modal-overlay" id="syncModal">
   <div class="modal sync-modal">
@@ -293,9 +340,10 @@ select.form-control{cursor:pointer}
         <h3>🛠️ 進階操作</h3>
         <div class="sync-actions">
           <button class="btn btn-ghost" onclick="fbForceReload()">🔄 強制從雲端重新載入</button>
-          <button class="btn btn-ghost" onclick="fbUploadAllLocal()">⬆️ 把本機全部資料上傳</button>
-          <button class="btn btn-danger btn-sm" onclick="fbClearCloudData()">🗑️ 清空雲端資料 (慎用)</button>
+          <button class="btn btn-ghost admin-only" onclick="fbUploadAllLocal()">⬆️ 把本機全部資料上傳</button>
+          <button class="btn btn-danger btn-sm admin-only" onclick="fbClearCloudData()">🗑️ 清空雲端資料 (慎用)</button>
         </div>
+        <div class="admin-locked-tip" style="margin-top:8px">🔒 上傳與清空功能需登入管理員模式</div>
         <div class="sync-log" id="syncLog">等待操作...</div>
       </div>
       <div class="tooltip-warn" style="background:#e3f2fd;border-color:#2196f3;color:#0d47a1">
@@ -669,6 +717,121 @@ const DEFAULT_VEHICLES = [
 ];
 
 
+
+// ===================== 管理員權限管理 =====================
+const ADMIN_PASSWORD = '1031';
+let adminLoggedIn = false;
+
+function isAdminMode(){
+  // 從 sessionStorage 讀取，關閉瀏覽器後失效（更安全）
+  return sessionStorage.getItem('adminMode') === 'true';
+}
+
+function applyAdminMode(){
+  adminLoggedIn = isAdminMode();
+  if(adminLoggedIn){
+    document.body.classList.add('admin-mode');
+  } else {
+    document.body.classList.remove('admin-mode');
+  }
+  updateAdminBadge();
+}
+
+function updateAdminBadge(){
+  const badge = document.getElementById('adminBadge');
+  if(!badge) return;
+  if(adminLoggedIn){
+    badge.className = 'admin-badge unlocked';
+    badge.innerHTML = '🔓 管理員模式';
+    badge.title = '點擊登出';
+  } else {
+    badge.className = 'admin-badge locked';
+    badge.innerHTML = '🔒 一般模式';
+    badge.title = '點擊登入管理員';
+  }
+}
+
+function openAdminModal(){
+  const loginPanel = document.getElementById('adminLoginPanel');
+  const logoutPanel = document.getElementById('adminLogoutPanel');
+  const loginBtn = document.getElementById('adminLoginBtn');
+  const logoutBtn = document.getElementById('adminLogoutBtn');
+  const title = document.getElementById('adminModalTitle');
+  const subtitle = document.getElementById('adminModalSubtitle');
+  const header = document.getElementById('adminModalHeader');
+
+  if(adminLoggedIn){
+    loginPanel.style.display = 'none';
+    logoutPanel.style.display = 'block';
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-flex';
+    title.textContent = '管理員模式';
+    subtitle.textContent = '您已登入管理員，可進行資料庫編輯';
+    header.style.background = 'linear-gradient(135deg,#27ae60,#2ecc71)';
+  } else {
+    loginPanel.style.display = 'block';
+    logoutPanel.style.display = 'none';
+    loginBtn.style.display = 'inline-flex';
+    logoutBtn.style.display = 'none';
+    title.textContent = '管理員登入';
+    subtitle.textContent = '請輸入管理員密碼以解鎖編輯功能';
+    header.style.background = 'linear-gradient(135deg,#2c3e50,#34495e)';
+    document.getElementById('adminPasswordInput').value = '';
+    document.getElementById('adminLoginError').textContent = '';
+    setTimeout(()=>{
+      const inp = document.getElementById('adminPasswordInput');
+      if(inp) inp.focus();
+    }, 100);
+  }
+  document.getElementById('adminModal').classList.add('show');
+}
+
+function tryAdminLogin(){
+  const input = document.getElementById('adminPasswordInput').value.trim();
+  const errBox = document.getElementById('adminLoginError');
+  if(input === ADMIN_PASSWORD){
+    sessionStorage.setItem('adminMode', 'true');
+    applyAdminMode();
+    errBox.textContent = '';
+    // 切換顯示為已登入
+    setTimeout(()=>{
+      document.getElementById('adminLoginPanel').style.display = 'none';
+      document.getElementById('adminLogoutPanel').style.display = 'block';
+      document.getElementById('adminLoginBtn').style.display = 'none';
+      document.getElementById('adminLogoutBtn').style.display = 'inline-flex';
+      document.getElementById('adminModalTitle').textContent = '管理員模式';
+      document.getElementById('adminModalSubtitle').textContent = '您已登入管理員，可進行資料庫編輯';
+      document.getElementById('adminModalHeader').style.background = 'linear-gradient(135deg,#27ae60,#2ecc71)';
+    }, 300);
+    // 重新渲染表格以顯示編輯按鈕
+    if(typeof renderEquipTable === 'function') renderEquipTable();
+    if(typeof renderVehicleTable === 'function') renderVehicleTable();
+  } else {
+    errBox.textContent = '❌ 密碼錯誤，請重新輸入';
+    document.getElementById('adminPasswordInput').value = '';
+    document.getElementById('adminPasswordInput').focus();
+  }
+}
+
+function adminLogout(){
+  if(!confirm('確定要登出管理員模式？')) return;
+  sessionStorage.removeItem('adminMode');
+  applyAdminMode();
+  closeModal('adminModal');
+  // 重新渲染表格隱藏編輯按鈕
+  if(typeof renderEquipTable === 'function') renderEquipTable();
+  if(typeof renderVehicleTable === 'function') renderVehicleTable();
+}
+
+// 在所有資料修改函式前檢查權限
+function requireAdmin(actionDesc){
+  if(!isAdminMode()){
+    alert('⛔ 此操作需要管理員權限\n\n請點擊右上角 🔒 一般模式 圖示進行登入。\n\n操作項目：' + (actionDesc||'資料修改'));
+    return false;
+  }
+  return true;
+}
+
 // ===================== FIREBASE REALTIME DATABASE =====================
 let fbReady = false;
 let fbOnline = false;
@@ -818,14 +981,19 @@ async function fbPushEquip(equip){
 
 // 單筆設備刪除
 async function fbRemoveEquip(code){
-  if(!fbReady || !window.firebaseAPI) return false;
+  if(!fbReady || !window.firebaseAPI){
+    console.warn('[Firebase] 未就緒，僅刪除本機設備:', code);
+    return false;
+  }
   try{
     const api = window.firebaseAPI;
     const safeKey = sanitizeFbKey(code);
     await api.remove(api.ref(api.db, 'equipDB/'+safeKey));
+    console.log('[Firebase] ✅ 雲端設備已刪除:', code);
     return true;
   }catch(e){
     console.error('fbRemoveEquip failed', e);
+    alert('⚠️ 雲端刪除失敗：' + e.message + '\n\n本機已刪除，但雲端可能仍存在。請檢查網路後使用「強制從雲端重新載入」。');
     return false;
   }
 }
@@ -847,14 +1015,19 @@ async function fbPushVehicle(vehicle){
 
 // 單筆車輛刪除
 async function fbRemoveVehicle(code){
-  if(!fbReady || !window.firebaseAPI) return false;
+  if(!fbReady || !window.firebaseAPI){
+    console.warn('[Firebase] 未就緒，僅刪除本機車輛:', code);
+    return false;
+  }
   try{
     const api = window.firebaseAPI;
     const safeKey = sanitizeFbKey(code);
     await api.remove(api.ref(api.db, 'vehicleDB/'+safeKey));
+    console.log('[Firebase] ✅ 雲端車輛已刪除:', code);
     return true;
   }catch(e){
     console.error('fbRemoveVehicle failed', e);
+    alert('⚠️ 雲端刪除失敗：' + e.message + '\n\n本機已刪除，但雲端可能仍存在。請檢查網路後使用「強制從雲端重新載入」。');
     return false;
   }
 }
@@ -890,6 +1063,7 @@ async function fbForceReload(){
 
 // 把本機全部資料上傳（通常用於初始化或修復）
 async function fbUploadAllLocal(){
+  if(!requireAdmin('批次上傳本機資料')) return;
   if(!fbReady){ syncLog('⚠️ Firebase 尚未準備好','warn'); return; }
   if(!confirm(`將本機 ${equipDB.length} 筆設備、${vehicleDB.length} 筆車輛全數上傳至雲端？
 （會覆蓋雲端同 code 的項目）`)) return;
@@ -914,6 +1088,7 @@ async function fbUploadAllLocal(){
 
 // 清空雲端資料（慎用）
 async function fbClearCloudData(){
+  if(!requireAdmin('清空雲端資料')) return;
   if(!fbReady){ syncLog('⚠️ Firebase 尚未準備好','warn'); return; }
   if(!confirm('⚠️ 確定要清空雲端所有設備與車輛資料嗎？此操作無法復原！')) return;
   if(!confirm('⚠️⚠️ 再次確認：所有裝置的資料都會被清空，確定執行？')) return;
@@ -1014,6 +1189,7 @@ function init() {
   renderEquipSelect(); renderEquipTable(); renderVehicleTable();
   renderFixedVehicleSelect();
   updateSyncStatus();
+  applyAdminMode();
   document.getElementById('vehicleMode').addEventListener('change', function(){
     document.getElementById('fixedVehicleWrap').style.display = this.value==='fixed'?'block':'none';
   });
@@ -1204,18 +1380,8 @@ function updateSummary(){
   document.getElementById('sumVolume').textContent = totalVol.toFixed(2);
 }
 
-// ===================== DEMO DATA =====================
-function loadDemo(){
-  shipmentItems=[];
-  const demos=[
-    {code:'HZS75',qty:1},{code:'SIL100',qty:2},{code:'BELT25',qty:1},
-    {code:'SCW12',qty:2},{code:'HOP_A',qty:1},{code:'STL_F',qty:4},
-    {code:'CTRL',qty:1},{code:'ELEC',qty:1},{code:'ADD',qty:1}
-  ];
-  demos.forEach(d=>{const e=equipDB.find(x=>x.code===d.code);if(e)shipmentItems.push({...e,qty:d.qty});});
-  renderShipmentList(); updateSummary();
-  alert('✅ 示範資料已載入！\n共 9 種設備，可點擊「自動評估裝車方案」查看結果。');
-}
+// ===================== DEMO DATA REMOVED (保留函式以避免錯誤) =====================
+function loadDemo(){ alert('⚠️ 為避免覆蓋雲端資料，示範資料載入功能已停用。'); }
 
 function checkOversizeForItem(item){
   const issues=[];
@@ -2011,13 +2177,15 @@ function renderEquipTable(){
     <td>${e.maxLayer}</td><td>${e.stackDelta}</td>
     <td>${(()=>{const cavs=getEquipCavities(e);if(!cavs.length)return'<span class="badge">無</span>';return cavs.map((c,ci)=>'<span class="badge badge-info" style="margin:1px">'+('#'+(ci+1)+' ')+c.l+'×'+c.w+'×'+c.h+'</span><br><small style="color:var(--text-light)">≤ '+c.maxWt.toLocaleString()+'kg</small>').join('<br>')})()}</td>
     <td><div class="flex gap-8">
-      <button class="btn btn-ghost btn-sm" onclick="openEquipModal(${i})">✏️</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteEquip(${i})">🗑️</button>
+      <button class="btn btn-ghost btn-sm admin-only" onclick="openEquipModal(${i})">✏️</button>
+      <button class="btn btn-danger btn-sm admin-only" onclick="deleteEquip(${i})">🗑️</button>
+      <span class="admin-locked-tip" style="padding:4px 8px;font-size:11px">🔒</span>
     </div></td>
   </tr>`).join('');
 }
 
 function openEquipModal(idx=-1){
+  if(!requireAdmin(idx<0?'新增設備':'編輯設備')) return;
   editEquipIdx=idx;
   document.getElementById('equipModalTitle').textContent=idx<0?'新增設備':'編輯設備';
   const e=idx>=0?equipDB[idx]:{code:'',name:'',cat:'攪拌主機',l:'',w:'',h:'',wt:'',stack:false,maxLayer:2,stackDelta:500,cavities:[],note:''};
@@ -2040,6 +2208,7 @@ function toggleCavityFields(){
   document.getElementById('cavityFields').style.display=document.getElementById('eq_cavity').value==='1'?'block':'none';
 }
 function saveEquip(){
+  if(!requireAdmin('儲存設備')) return;
   const hasCavity = document.getElementById('eq_cavity').value==='1';
   const cavities = hasCavity ? getCavityRowsData() : [];
   const e={
@@ -2068,7 +2237,8 @@ function saveEquip(){
   });
 }
 function deleteEquip(i){
-  if(!confirm(`確定要刪除「${equipDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
+  if(!requireAdmin('刪除設備')) return;
+  if(!confirm(`⚠️ 確定要刪除「${equipDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
   const removedCode = equipDB[i].code;
   equipDB.splice(i,1);
   saveEquipDB(); renderEquipTable(); renderEquipSelect();
@@ -2077,6 +2247,7 @@ function deleteEquip(i){
   });
 }
 function resetEquipDB(){
+  if(!requireAdmin('重置設備資料')) return;
   if(!confirm('確定要重置為預設設備資料？\n（此操作將同步覆蓋雲端資料）')) return;
   equipDB = migrateEquipCavities(JSON.parse(JSON.stringify(DEFAULT_EQUIP)));
   saveEquipDB(); renderEquipTable(); renderEquipSelect();
@@ -2101,17 +2272,20 @@ function renderVehicleTable(){
     <td>${v.l}</td><td>${v.w}</td><td>${v.h}</td><td>${(v.maxWt/1000).toFixed(1)}t</td>
     <td>${v.floor}</td><td>NT$ ${(v.cost||0).toLocaleString()}</td><td style="font-size:12px;color:var(--text-light)">${v.note}</td>
     <td><div class="flex gap-8">
-      <button class="btn btn-ghost btn-sm" onclick="openVehicleModal(${i})">✏️</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${i})">🗑️</button>
+      <button class="btn btn-ghost btn-sm admin-only" onclick="openVehicleModal(${i})">✏️</button>
+      <button class="btn btn-danger btn-sm admin-only" onclick="deleteVehicle(${i})">🗑️</button>
+      <span class="admin-locked-tip" style="padding:4px 8px;font-size:11px">🔒</span>
     </div></td>
   </tr>`).join('');
   renderFixedVehicleSelect();
   updateSyncStatus();
+  applyAdminMode();
 }
 function renderFixedVehicleSelect(){
   document.getElementById('fixedVehicleSelect').innerHTML=vehicleDB.map(v=>`<option value="${v.code}">${v.name} (${(v.maxWt/1000).toFixed(0)}t / NT$ ${(v.cost||0).toLocaleString()})</option>`).join('');
 }
 function openVehicleModal(idx=-1){
+  if(!requireAdmin(idx<0?'新增車型':'編輯車型')) return;
   editVehicleIdx=idx;
   document.getElementById('vehicleModalTitle').textContent=idx<0?'新增車型':'編輯車型';
   const v=idx>=0?vehicleDB[idx]:{code:'',name:'',l:'',w:'',h:'',maxWt:'',floor:'1200',cost:'0',note:''};
@@ -2120,6 +2294,7 @@ function openVehicleModal(idx=-1){
   document.getElementById('vehicleModal').classList.add('show');
 }
 function saveVehicle(){
+  if(!requireAdmin('儲存車輛')) return;
   const v={
     code:document.getElementById('v_code').value.trim(),
     name:document.getElementById('v_name').value.trim(),
@@ -2170,6 +2345,7 @@ function readExcelRows(file, callback){
   reader.readAsArrayBuffer(file);
 }
 function importEquipExcel(event){
+  if(!requireAdmin('匯入設備 Excel')){ event.target.value=''; return; }
   const file = event.target.files[0];
   if(!file) return;
   readExcelRows(file, rows=>{
@@ -2234,6 +2410,7 @@ function importEquipExcel(event){
   });
 }
 function importVehicleExcel(event){
+  if(!requireAdmin('匯入車輛 Excel')){ event.target.value=''; return; }
   const file = event.target.files[0];
   if(!file) return;
   readExcelRows(file, rows=>{
@@ -2275,7 +2452,8 @@ function importVehicleExcel(event){
   });
 }
 function deleteVehicle(i){
-  if(!confirm(`確定要刪除「${vehicleDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
+  if(!requireAdmin('刪除車輛')) return;
+  if(!confirm(`⚠️ 確定要刪除「${vehicleDB[i].name}」？\n（此操作將同步刪除雲端資料）`)) return;
   const removedCode = vehicleDB[i].code;
   vehicleDB.splice(i,1);
   saveVehicleDB(); renderVehicleTable();
@@ -2284,6 +2462,7 @@ function deleteVehicle(i){
   });
 }
 function resetVehicleDB(){
+  if(!requireAdmin('重置車輛資料')) return;
   if(!confirm('確定要重置為預設車輛資料？\n（此操作將同步覆蓋雲端資料）')) return;
   vehicleDB = JSON.parse(JSON.stringify(DEFAULT_VEHICLES));
   saveVehicleDB(); renderVehicleTable();
