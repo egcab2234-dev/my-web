@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>混凝土預拌機械裝車疊貨自動評估系統 v9.0-中空尺寸修正 — 高度貼合車型選擇 / 管理員權限 / Firebase 即時同步 / 多重中空位 / 重量排序</title>
+<title>混凝土預拌機械裝車疊貨自動評估系統 v11.0-出車單與示意圖強化 — 高度貼合車型選擇 / 管理員權限 / Firebase 即時同步 / 多重中空位 / 重量排序</title>
 <style>
 :root {
   --primary:#1a2b4a; --primary-light:#2d4a7a; --primary-lighter:#3d5f9a;
@@ -114,13 +114,20 @@ select.form-control{cursor:pointer}
 .truck-card-body{padding:20px}
 /* DIAGRAM AREA */
 .diagram-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.diagram-box canvas{max-width:100%}
+/* 列印/匯出 PDF 專用：把裝車示意圖放大並改為上下堆疊，方便判讀 */
+.pdf-export .diagram-row, body.print-mode .diagram-row{grid-template-columns:1fr !important;gap:20px !important}
+.pdf-export .diagram-box, body.print-mode .diagram-box{padding:14px !important}
+.pdf-export .diagram-title, body.print-mode .diagram-title{font-size:15px !important}
+.pdf-export .legend-item, body.print-mode .legend-item{font-size:13px !important}
+.pdf-export .legend-color, body.print-mode .legend-color{width:22px !important;height:22px !important;border-radius:4px !important;border:1px solid #333}
 .diagram-box{background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:12px}
 .diagram-title{font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px}
 .diagram-box canvas{display:block;width:100%;border-radius:6px}
 /* LEGEND */
-.legend-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-light)}
-.legend-color{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.legend-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 14px;margin-top:12px;padding:12px 14px;background:#f8faff;border:1px solid var(--border);border-radius:10px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#333;background:#fff;padding:5px 8px;border-radius:6px;border:1px solid #e2e8f0}
+.legend-color{width:18px;height:18px;border-radius:4px;flex-shrink:0;border:1.5px solid #333;box-shadow:inset 0 0 0 1.5px #fff}
 /* SUMMARY STATS */
 .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);color:#fff;border-radius:12px;padding:18px;text-align:center}
@@ -232,8 +239,9 @@ body.admin-mode .admin-locked-tip{display:none}
   <div class="header-right">
     <span class="admin-badge locked" id="adminBadge" onclick="openAdminModal()" title="管理員權限">🔒 一般模式</span>
     <span class="sync-status unsynced" id="syncStatusBtn" onclick="openSyncModal()" title="Firebase 即時雲端資料庫">🔥 連線中...</span>
-    <button class="btn btn-ghost" onclick="window.print()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
-    <span class="version-badge">v9.0-中空尺寸修正</span>
+    <button class="btn btn-ghost" onclick="openDispatchModal()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dispatchBtn" title="設定出車單專案／地址／車號／日期等資訊">📋 出車單資訊</button>
+    <button class="btn btn-ghost" onclick="printCurrentPage()" style="color:#fff;border-color:rgba(255,255,255,.3)" id="printBtn">🖨️ 列印報表</button>
+    <span class="version-badge">v11.0-出車單與示意圖強化</span>
   </div>
 </div>
 
@@ -243,6 +251,34 @@ body.admin-mode .admin-locked-tip{display:none}
   <div class="nav-tab" onclick="switchTab('result')" id="tab-result">🚛 裝車方案結果 <span class="badge" id="result-badge" style="display:none">0</span></div>
   <div class="nav-tab" onclick="switchTab('equipment')" id="tab-equipment">🔧 設備資料庫</div>
   <div class="nav-tab" onclick="switchTab('vehicle')" id="tab-vehicle">🚚 車輛規格管理</div>
+</div>
+
+<!-- DISPATCH INFO MODAL -->
+<div class="modal" id="dispatchModal">
+  <div class="modal-content" style="max-width:640px">
+    <div class="modal-header">
+      <h2 class="modal-title">📋 出車單資訊設定</h2>
+      <button class="modal-close" onclick="closeModal('dispatchModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tooltip-warn" style="margin-bottom:14px">📌 以下欄位會顯示於「列印報表」與「匯出 PDF」的每台車頂部，便於整合各部門資訊做為出車單使用。</div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">專案名稱</label><input class="form-control" id="dp_project" placeholder="例：台中港拌合廠新建案"></div>
+        <div class="form-group"><label class="form-label">到達地址</label><input class="form-control" id="dp_address" placeholder="例：台中市梧棲區xxx號"></div>
+      </div>
+      <div class="grid-3">
+        <div class="form-group"><label class="form-label">車號（可多筆，以 / 分隔對應第 1~N 台）</label><input class="form-control" id="dp_plate" placeholder="例：ABC-1234 / XYZ-5678"></div>
+        <div class="form-group"><label class="form-label">裝車日期</label><input class="form-control" id="dp_loadDate" type="date"></div>
+        <div class="form-group"><label class="form-label">到達日期</label><input class="form-control" id="dp_arriveDate" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">備註</label><input class="form-control" id="dp_note" placeholder="現場聯絡人／注意事項…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="clearDispatchInfo()">🗑️ 清除全部</button>
+      <button class="btn btn-ghost" onclick="closeModal('dispatchModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveDispatchInfo()">💾 儲存並套用</button>
+    </div>
+  </div>
 </div>
 
 <!-- LOADING -->
@@ -1383,6 +1419,64 @@ function updateSummary(){
 // ===================== DEMO DATA REMOVED (保留函式以避免錯誤) =====================
 function loadDemo(){ alert('⚠️ 為避免覆蓋雲端資料，示範資料載入功能已停用。'); }
 
+// ===================== DISPATCH INFO (出車單資訊) =====================
+function loadDispatchInfo(){
+  try{ return JSON.parse(sessionStorage.getItem('dispatchInfo')||'{}'); }catch(e){ return {}; }
+}
+function openDispatchModal(){
+  const info = loadDispatchInfo();
+  document.getElementById('dp_project').value = info.project||'';
+  document.getElementById('dp_address').value = info.address||'';
+  document.getElementById('dp_plate').value = info.plate||'';
+  document.getElementById('dp_loadDate').value = info.loadDate||'';
+  document.getElementById('dp_arriveDate').value = info.arriveDate||'';
+  document.getElementById('dp_note').value = info.note||'';
+  document.getElementById('dispatchModal').classList.add('show');
+}
+function saveDispatchInfo(){
+  const info = {
+    project: document.getElementById('dp_project').value.trim(),
+    address: document.getElementById('dp_address').value.trim(),
+    plate:   document.getElementById('dp_plate').value.trim(),
+    loadDate:document.getElementById('dp_loadDate').value,
+    arriveDate:document.getElementById('dp_arriveDate').value,
+    note:    document.getElementById('dp_note').value.trim()
+  };
+  sessionStorage.setItem('dispatchInfo', JSON.stringify(info));
+  closeModal('dispatchModal');
+  // 已有結果就即時重新渲染，讓出車單資訊立刻反映到卡片
+  if(currentPlan){ renderResults(currentPlan); }
+  alert('✅ 出車單資訊已套用，可直接列印或匯出 PDF');
+}
+function clearDispatchInfo(){
+  sessionStorage.removeItem('dispatchInfo');
+  ['dp_project','dp_address','dp_plate','dp_loadDate','dp_arriveDate','dp_note'].forEach(id=>document.getElementById(id).value='');
+  if(currentPlan){ renderResults(currentPlan); }
+}
+function getDispatchPlateForTruck(info, tidx){
+  if(!info || !info.plate) return '';
+  const parts = info.plate.split('/').map(s=>s.trim()).filter(Boolean);
+  if(parts.length === 0) return '';
+  if(parts.length === 1) return parts[0];
+  return parts[tidx] || parts[parts.length-1];
+}
+function renderDispatchBlock(tidx){
+  const info = loadDispatchInfo();
+  const plate = getDispatchPlateForTruck(info, tidx);
+  const has = info.project || info.address || plate || info.loadDate || info.arriveDate || info.note;
+  const cell = (label, val) => `<td style="padding:6px 10px;border:1px solid #cfd6e4;background:#f8faff;font-weight:600;color:var(--primary);white-space:nowrap;width:90px">${label}</td><td style="padding:6px 10px;border:1px solid #cfd6e4;min-width:120px">${val||'<span style=\"color:#bbb\">—</span>'}</td>`;
+  return `<div class="dispatch-block" style="margin:0 0 12px 0;border:2px solid var(--primary);border-radius:8px;overflow:hidden">
+    <div style="background:var(--primary);color:#fff;padding:6px 12px;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+      <span>📋 出車單 — 第 ${tidx+1} 台車</span>
+      <span style="font-size:11px;opacity:.85">${has?'':'（尚未填寫，請點右上「📋 出車單資訊」）'}</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">
+      <tr>${cell('專案', info.project)}${cell('車號', plate)}${cell('裝車日期', info.loadDate)}</tr>
+      <tr>${cell('地址', info.address)}${cell('到達日期', info.arriveDate)}${cell('備註', info.note)}</tr>
+    </table>
+  </div>`;
+}
+
 function checkOversizeForItem(item){
   const issues=[];
   const maxLen = Math.max(...vehicleDB.map(v=>v.l||0));
@@ -1618,6 +1712,7 @@ function createTruck(vehicle, truckNum){
     maxUsedLength:0,
     maxUsedWidth:0,
     floorPlacements:0,
+    stackPlacements:0,
     freeRects:[{x:0,y:0,l:vehicle.l,w:vehicle.w}]
   };
 }
@@ -1658,7 +1753,7 @@ function evaluateFloorPlacement(truck, item, allowOversize=false){
       const wasteArea = (fr.l*fr.w) - (o.l*o.w);
       const longPenalty = (fr.l - o.l);
       const widePenalty = (fr.w - o.w);
-      const score = wasteArea + longPenalty*0.2 + widePenalty*0.2 + (vehicle.l - fr.x - o.l)*0.05 + fr.y*0.01; // 偏好車尾(高X)放置重物
+      const score = wasteArea + longPenalty*0.2 + widePenalty*0.2 - (fr.x + o.l)*0.05 + fr.y*0.01; // 偏好車尾(靠 vehicle.l 側，即大 X)放置重物
       if(!best || score < best.score){
         best = { idx, x:fr.x, y:fr.y, l:o.l, w:o.w, rotated:o.rotated, score, oversize:false };
       }
@@ -1704,6 +1799,7 @@ function applyStackPlacement(truck, item, candidate){
   candidate.base.stackCount = candidate.newCount;
   candidate.base.overH = Math.max(0, candidate.newHeight - truck.vehicle.h);
   truck.usedWeight += item.wt;
+  truck.stackPlacements = (truck.stackPlacements||0) + 1;
 }
 
 function getVehicleCandidates(item, mode, fixedCode, allowOversize){
@@ -1764,34 +1860,60 @@ function runFFD(items, mode, fixedCode, allowOversize){
       placed = true;
     }
 
-    // B. 再嘗試所有既有車輛的平面空間（長+寬）
+    // B+C. 平面與疊放「同時評估」既有車輛，避免疊放機會被平面先搶先贏而完全略過
+    //      （舊版：平面只要放得下就直接用，疊放只在平面完全放不下時才被考慮，
+    //       導致可疊放設備長期未被評估、且小件先鋪滿平面而讓後續大型設備被迫新開車）
     if(!placed){
       let bestFloor = null;
+      let bestStack = null;
       trucks.forEach((truck, truckIdx)=>{
-        const candidate = evaluateFloorPlacement(truck, item, false);
-        if(candidate){
+        const floorCandidate = evaluateFloorPlacement(truck, item, false);
+        if(floorCandidate){
           // 既有車輛若高度遠超過此物品，視為輕微浪費懲罰，
           // 避免把低物件塞進高大車輛而拉高整體車隊成本
           const heightWaste = Math.max(0, (truck.vehicle.h||0) - (item.h||0));
-          const score = candidate.score + (truck.vehicle.cost||0)*0.01 + heightWaste*0.05;
-          if(!bestFloor || score < bestFloor.score) bestFloor = {truckIdx, candidate, score};
+          const score = floorCandidate.score + (truck.vehicle.cost||0)*0.01 + heightWaste*0.05;
+          if(!bestFloor || score < bestFloor.score) bestFloor = {truckIdx, candidate:floorCandidate, score};
         }
+        const stackCandidate = evaluateStackPlacement(truck, item);
+        if(stackCandidate && (!bestStack || stackCandidate.score < bestStack.score)) bestStack = {truckIdx, candidate:stackCandidate, score:stackCandidate.score};
       });
-      if(bestFloor){
+
+      let useStack = false;
+      if(bestStack){
+        if(!bestFloor){
+          useStack = true; // 平面完全放不下，只能疊放
+        } else {
+          // 平面放得下時，檢查該車剩餘平面空間是否已經偏緊（< 30% 車廂總面積）。
+          // 若已經偏緊，優先疊放以保留較大面積平面給後續（可能更大型）的設備，
+          // 減少「平面明明還有一點空間卻硬要新開一台車」的浪費情況。
+          const truckForFloor = trucks[bestFloor.truckIdx];
+          const totalFloorArea = truckForFloor.vehicle.l * truckForFloor.vehicle.w;
+          const remainFloorArea = truckForFloor.freeRects.reduce((s,r)=>s+r.l*r.w, 0);
+          const floorScarce = totalFloorArea > 0 && (remainFloorArea / totalFloorArea) < 0.3;
+          useStack = floorScarce;
+        }
+      }
+
+      if(useStack){
+        applyStackPlacement(trucks[bestStack.truckIdx], item, bestStack.candidate);
+        placed = true;
+      } else if(bestFloor){
         placeOnFloor(trucks[bestFloor.truckIdx], item, bestFloor.candidate);
         placed = true;
       }
     }
 
-    // C. 平面真的無法放入後，才考慮疊放
+    // C2. 保險機制：B+C 仍未放入時，在新開車之前再完整掃過一次所有既有車輛的疊放可能性
+    //     （雙重檢查，避免任何邊界情況下漏掉可用的疊放機會）
     if(!placed){
-      let bestStack = null;
+      let bestStackRetry = null;
       trucks.forEach((truck, truckIdx)=>{
         const candidate = evaluateStackPlacement(truck, item);
-        if(candidate && (!bestStack || candidate.score < bestStack.score)) bestStack = {truckIdx, candidate, score:candidate.score};
+        if(candidate && (!bestStackRetry || candidate.score < bestStackRetry.score)) bestStackRetry = {truckIdx, candidate, score:candidate.score};
       });
-      if(bestStack){
-        applyStackPlacement(trucks[bestStack.truckIdx], item, bestStack.candidate);
+      if(bestStackRetry){
+        applyStackPlacement(trucks[bestStackRetry.truckIdx], item, bestStackRetry.candidate);
         placed = true;
       }
     }
@@ -1868,12 +1990,12 @@ function renderResults(plan){
     </div>
   </div>
   <div class="flex-between mb-16 no-print">
-    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案；演算法依 <b>重量由重到輕</b> 排序，重物先放車尾，再優先利用車板平面空間與多重中空位。</div>
+    <div style="font-size:14px;color:var(--text-light)">共評估 <b style="color:var(--primary)">${totalTrucks}</b> 台車輛裝載方案；演算法依 <b>重量由重到輕</b> 排序，重物先放車尾，平面與疊放同時評估，再優先利用車板平面空間、多重中空位與可疊放設備（本次共疊放 <b style="color:var(--primary)">${plan.trucks.reduce((s,t)=>s+(t.stackPlacements||0),0)}</b> 件 / 平面配置 <b style="color:var(--primary)">${plan.trucks.reduce((s,t)=>s+(t.floorPlacements||0),0)}</b> 件）。</div>
     <div class="flex gap-8">
       <button class="btn btn-ghost" onclick="switchTab('shipment')">← 返回修改清單</button>
       <button class="btn btn-ghost" onclick="exportResultExcel()">📤 匯出 Excel</button>
       <button class="btn btn-ghost" onclick="exportResultPDF()">📄 匯出 PDF</button>
-      <button class="btn btn-accent" onclick="window.print()">🖨️ 列印報表</button>
+      <button class="btn btn-accent" onclick="printCurrentPage()">🖨️ 列印報表</button>
     </div>
   </div>`;
 
@@ -1895,6 +2017,7 @@ function renderResults(plan){
 
     html+=`
     <div class="truck-card ${hasOversize||overWt?'oversize-truck':''}" id="truck_${tidx}">
+      ${renderDispatchBlock(tidx)}
       <div class="truck-card-header">
         <div class="t-num">${tidx+1}</div>
         <div class="t-info">
@@ -1980,12 +2103,16 @@ let colorIdx=0;
 function getColor(code){if(!colorMap[code]){colorMap[code]=ITEM_COLORS[colorIdx%ITEM_COLORS.length];colorIdx++;}return colorMap[code];}
 
 // ===================== TOP VIEW CANVAS =====================
-function drawTopView(tidx, truck){
+function drawTopView(tidx, truck, opts){
   const canvas=document.getElementById(`topCanvas_${tidx}`);
   if(!canvas) return;
   const v=truck.vehicle;
-  const W=canvas.parentElement.clientWidth-24||600;
-  canvas.width=W; canvas.height=200;
+  const highRes = opts && opts.highRes;
+  const targetW = highRes ? 1360 : (canvas.parentElement.clientWidth-24||600);
+  const targetH = highRes ? 460 : 200;
+  const W = targetW;
+  canvas.width=W; canvas.height=targetH;
+  if(highRes){ canvas.style.width='100%'; canvas.style.height='auto'; }
   const ctx=canvas.getContext('2d');
   const PAD=30, ARROW=20;
   const drawW=W-PAD*2-ARROW;
@@ -2112,12 +2239,16 @@ function drawTopView(tidx, truck){
 }
 
 // ===================== SIDE VIEW CANVAS =====================
-function drawSideView(tidx, truck){
+function drawSideView(tidx, truck, opts){
   const canvas=document.getElementById(`sideCanvas_${tidx}`);
   if(!canvas) return;
   const v=truck.vehicle;
-  const W=canvas.parentElement.clientWidth-24||600;
-  canvas.width=W; canvas.height=200;
+  const highRes = opts && opts.highRes;
+  const targetW = highRes ? 1360 : (canvas.parentElement.clientWidth-24||600);
+  const targetH = highRes ? 440 : 200;
+  const W = targetW;
+  canvas.width=W; canvas.height=targetH;
+  if(highRes){ canvas.style.width='100%'; canvas.style.height='auto'; }
   const ctx=canvas.getContext('2d');
   const PAD_L=36, PAD_R=20, PAD_T=20, PAD_B=36;
   const drawW=W-PAD_L-PAD_R;
@@ -2198,25 +2329,56 @@ function drawSideView(tidx, truck){
 function buildLegend(tidx, truck){
   const div=document.getElementById(`legend_${tidx}`);
   if(!div) return;
-  const seen=new Set();
-  let html='';
+  // 按設備 code 匯總同款件數與總重
+  const groups = {};
   truck.loadedItems.forEach(li=>{
-    if(seen.has(li.item.code)) return;
-    seen.add(li.item.code);
-    const color=getColor(li.item.code);
-    html+=`<div class="legend-item"><div class="legend-color" style="background:${color}"></div>${li.item.code}: ${li.item.name}</div>`;
+    const k = li.item.code;
+    if(!groups[k]){
+      groups[k] = { item:li.item, count:0, totalWt:0, stackCounts:new Set(), hasCavity:false, hasInCavity:false, over:{L:false,W:false,H:false} };
+    }
+    groups[k].count += 1;
+    groups[k].totalWt += (li.item.wt||0);
+    if((li.stackCount||1) > 1) groups[k].stackCounts.add(li.stackCount);
+    if((li.cavities&&li.cavities.length) || li.cavity) groups[k].hasCavity = true;
+    if(li.inCavity) groups[k].hasInCavity = true;
+    if(li.overL>0) groups[k].over.L = true;
+    if(li.overW>0) groups[k].over.W = true;
+    if(li.overH>0) groups[k].over.H = true;
   });
+  let html = '<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px">🎨 設備色塊對照表（本車共 '+truck.loadedItems.length+' 件）</div>';
+  Object.keys(groups).forEach(code=>{
+    const g = groups[code];
+    const color = getColor(code);
+    const tags = [];
+    if(g.stackCounts.size) tags.push('<span style="background:#fff3cd;color:#856404;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">疊放</span>');
+    if(g.hasCavity) tags.push('<span style="background:#d4edda;color:#155724;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">含中空</span>');
+    if(g.hasInCavity) tags.push('<span style="background:#cce5ff;color:#004085;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">入中空</span>');
+    if(g.over.L||g.over.W||g.over.H) tags.push('<span style="background:#f8d7da;color:#721c24;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">超限</span>');
+    html += `<div class="legend-item">
+      <div class="legend-color" style="background:${color}"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:#222"><code style="background:#eef2f8;padding:1px 5px;border-radius:4px">${code}</code> ×${g.count}</div>
+        <div style="font-size:11px;color:#556;line-height:1.4">${g.item.name}<br>${g.item.l}×${g.item.w}×${g.item.h}mm ｜ 單重 ${(g.item.wt/1000).toFixed(2)}t</div>
+        ${tags.length?`<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap">${tags.join('')}</div>`:''}
+      </div>
+    </div>`;
+  });
+  // 特殊符號說明
   const hasOverL=truck.loadedItems.some(li=>li.overL>0);
   const hasOverW=truck.loadedItems.some(li=>li.overW>0);
   const hasOverH=truck.loadedItems.some(li=>li.overH>0);
   const hasCavity=truck.loadedItems.some(li=>(li.cavities&&li.cavities.length)||(li.cavity));
   const hasCavityItem=truck.loadedItems.some(li=>li.inCavity);
-  if(hasOverL) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #f39c12;border-radius:2px"></div><span style="color:#e67e22;font-weight:700">超長區域</span></div>`;
-  if(hasOverW) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #9b59b6;border-radius:2px"></div><span style="color:#8e44ad;font-weight:700">超寬區域</span></div>`;
-  if(hasOverH) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #3498db;border-radius:2px"></div><span style="color:#2980b9;font-weight:700">超高區域</span></div>`;
-  if(hasCavity) html+=`<div class="legend-item"><div style="width:14px;height:14px;border:2px dashed #ffffff;border-radius:2px"></div><span style="color:#ffffff;font-weight:700">設備中空區域</span></div>`;
-  if(hasCavityItem) html+=`<div class="legend-item"><div style="width:14px;height:14px;background:#111;border-radius:2px"></div><span style="color:#111;font-weight:700">置入中空貨物</span></div>`;
-  html+=`<div class="legend-item"><div style="width:14px;height:3px;background:#e74c3c;margin:5px 0"></div><span style="color:#e74c3c;font-weight:700">限高線</span></div>`;
+  const extras = [];
+  if(hasOverL) extras.push(`<div class="legend-item"><div style="width:18px;height:18px;border:2px dashed #f39c12;border-radius:4px"></div><span style="color:#e67e22;font-weight:700">超長區域</span></div>`);
+  if(hasOverW) extras.push(`<div class="legend-item"><div style="width:18px;height:18px;border:2px dashed #9b59b6;border-radius:4px"></div><span style="color:#8e44ad;font-weight:700">超寬區域</span></div>`);
+  if(hasOverH) extras.push(`<div class="legend-item"><div style="width:18px;height:18px;border:2px dashed #3498db;border-radius:4px"></div><span style="color:#2980b9;font-weight:700">超高區域</span></div>`);
+  if(hasCavity) extras.push(`<div class="legend-item"><div style="width:18px;height:18px;border:2px dashed #666;background:#e8ecf3;border-radius:4px"></div><span style="color:#333;font-weight:700">設備中空區域</span></div>`);
+  if(hasCavityItem) extras.push(`<div class="legend-item"><div style="width:18px;height:18px;background:#333;border-radius:4px"></div><span style="color:#333;font-weight:700">置入中空貨物</span></div>`);
+  extras.push(`<div class="legend-item"><div style="width:22px;height:6px;background:#e74c3c;border-radius:2px"></div><span style="color:#e74c3c;font-weight:700">限高線</span></div>`);
+  if(extras.length){
+    html += `<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--primary);margin-top:6px">📌 圖面符號說明</div>` + extras.join('');
+  }
   div.innerHTML=html;
 }
 
@@ -2602,10 +2764,21 @@ function exportResultExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), '裝載明細');
   downloadWorkbook(wb, '裝車評估結果.xlsx');
 }
-async function exportNodeToPDF(nodeOrSelector, filename, title){
+async function exportNodeToPDF(nodeOrSelector, filename, title, mode='download'){
   const source = typeof nodeOrSelector === 'string' ? document.querySelector(nodeOrSelector) : nodeOrSelector;
   if(!source){ alert('找不到可匯出的內容'); return; }
   if(typeof html2canvas === 'undefined' || !window.jspdf){ alert('PDF 匯出模組尚未載入'); return; }
+
+  // 若為「列印」模式，先同步開啟一個空白視窗（避免瀏覽器彈出視窗阻擋），
+  // 稍後把產生好的 PDF 內容導入這個視窗並觸發列印，確保「列印」與「匯出PDF」畫面完全一致。
+  let printWin = null;
+  if(mode === 'print'){
+    printWin = window.open('', '_blank');
+    if(printWin){
+      printWin.document.write('<!DOCTYPE html><html><head><title>'+(title||'報表')+' - 準備列印中</title></head><body style="font-family:sans-serif;padding:60px;color:#556;text-align:center"><h2>📄 報表產生中，請稍候…</h2><p>正在依匯出 PDF 的排版產生列印內容</p></body></html>');
+    }
+  }
+
   const cloneWrap = document.createElement('div');
   cloneWrap.style.position = 'fixed';
   cloneWrap.style.left = '-100000px';
@@ -2613,11 +2786,34 @@ async function exportNodeToPDF(nodeOrSelector, filename, title){
   cloneWrap.style.width = '1400px';
   cloneWrap.style.background = '#fff';
   cloneWrap.style.zIndex = '-1';
+  cloneWrap.className = 'pdf-export'; // 觸發 PDF 專用 CSS：diagram 上下堆疊、圖例放大
   const clone = source.cloneNode(true);
   clone.style.display = 'block';
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
-  await new Promise(r=>setTimeout(r,150));
+
+  // ★ 關鍵：clone 出來的 canvas 是空的（cloneNode 不複製 canvas 像素），
+  //    必須在 clone 內以 highRes 模式重新繪製一次，PDF 才會有裝車示意圖。
+  if(currentPlan && (source.id === 'resultContent' || source.querySelector('#resultContent') || source.querySelector('canvas[id^="topCanvas_"]'))){
+    currentPlan.trucks.forEach((truck, tidx)=>{
+      const topClone = clone.querySelector(`#topCanvas_${tidx}`);
+      const sideClone = clone.querySelector(`#sideCanvas_${tidx}`);
+      if(topClone){
+        // 直接把繪圖目標暫時指向 clone 中的 canvas
+        const origGet = document.getElementById;
+        const idMap = {[`topCanvas_${tidx}`]: topClone, [`sideCanvas_${tidx}`]: sideClone};
+        document.getElementById = function(id){ return idMap[id] || origGet.call(document, id); };
+        try{
+          drawTopView(tidx, truck, {highRes:true});
+          drawSideView(tidx, truck, {highRes:true});
+        }finally{
+          document.getElementById = origGet;
+        }
+      }
+    });
+  }
+
+  await new Promise(r=>setTimeout(r,180));
   const canvas = await html2canvas(clone, {scale:2, useCORS:true, backgroundColor:'#ffffff'});
   document.body.removeChild(cloneWrap);
 
@@ -2646,11 +2842,41 @@ async function exportNodeToPDF(nodeOrSelector, filename, title){
     sY += sliceHeightPx;
     remaining -= sliceH;
   }
-  pdf.save(filename);
+
+  if(mode === 'print'){
+    if(!printWin){
+      alert('瀏覽器已封鎖彈出視窗，請允許本網站的彈出視窗後再試一次「列印報表」');
+      return;
+    }
+    const blobUrl = pdf.output('bloburl');
+    const triggerPrint = ()=>{ try{ printWin.focus(); printWin.print(); }catch(e){} };
+    printWin.location = blobUrl;
+    printWin.onload = triggerPrint;
+    // 部分瀏覽器對 blob PDF 不一定會觸發 onload，加一道保險延遲觸發
+    setTimeout(triggerPrint, 900);
+  } else {
+    pdf.save(filename);
+  }
 }
 function exportEquipPDF(){ exportNodeToPDF('#page-equipment .card', '設備資料庫.pdf', '設備資料庫'); }
 function exportVehiclePDF(){ exportNodeToPDF('#page-vehicle .card', '車輛資料庫.pdf', '車輛資料庫'); }
 function exportResultPDF(){ if(!currentPlan){ alert('請先執行裝車評估方案'); return; } exportNodeToPDF('#resultContent', '裝車評估結果.pdf', '裝車評估結果'); }
+
+// 「列印報表」統一改走 PDF 產生流程再開啟列印對話框，確保列印排版與匯出 PDF 完全一致，
+// 不再使用瀏覽器原生 window.print()（其排版由 @media print CSS 決定，容易與 PDF 產生落差）。
+function printCurrentPage(){
+  const activePage = document.querySelector('.page.active');
+  if(activePage && activePage.id === 'page-result'){
+    if(!currentPlan){ alert('請先執行裝車評估方案'); return; }
+    exportNodeToPDF('#resultContent', '裝車評估結果.pdf', '裝車評估結果', 'print');
+  } else if(activePage && activePage.id === 'page-equipment'){
+    exportNodeToPDF('#page-equipment .card', '設備資料庫.pdf', '設備資料庫', 'print');
+  } else if(activePage && activePage.id === 'page-vehicle'){
+    exportNodeToPDF('#page-vehicle .card', '車輛資料庫.pdf', '車輛資料庫', 'print');
+  } else {
+    window.print();
+  }
+}
 
 init();
 </script>
